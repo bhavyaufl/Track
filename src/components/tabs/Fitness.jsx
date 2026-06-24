@@ -31,36 +31,48 @@ function LevelsTable({ levels }) {
   return (
     <div className="space-y-4">
       {GROUPS.map(group => {
-        const exercises = EXERCISE_GOALS.filter(e => e.group === group)
-        const rows = exercises.map(ex => {
+        const rows = EXERCISE_GOALS.filter(e => e.group === group).map(ex => {
           const lvl = levels.find(l => l.exercise_name === ex.name)
           return { ...ex, current: lvl?.current_weight || 0, level: lvl?.current_level || 1, lastSets: lvl?.last_sets || [] }
-        }).filter(r => r.current > 0)
+        })
 
-        if (!rows.length) return null
         return (
           <div key={group}>
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{group}</div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {rows.map(r => {
-                const readyToLevel = r.lastSets.length >= 3 && r.lastSets.every(s => s >= 12)
-                const pct = r.goal ? Math.min((r.current / r.goal) * 100, 100) : null
+                const started = r.current > 0
+                const readyToLevel = started && r.lastSets.length >= 3 && r.lastSets.every(s => s >= 12)
+                const pct = r.goal && started
+                  ? Math.min(r.type === 'time' ? (r.current ? (r.goal / r.current) * 100 : 0) : (r.current / r.goal) * 100, 100)
+                  : 0
+                const barColor = pct >= 100 ? '#10b981' : pct >= 60 ? '#6366f1' : '#a5b4fc'
+
                 return (
-                  <div key={r.name} className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-center justify-between">
-                    <div>
-                      <div className="text-gray-700 text-sm font-medium flex items-center gap-2">
-                        {r.name}
-                        {readyToLevel && <span className="text-amber-500 text-xs bg-amber-50 px-1.5 py-0.5 rounded-full">⬆️ add weight</span>}
+                  <div key={r.name}
+                    className={`rounded-xl px-3 py-2.5 flex items-center justify-between border ${started ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="flex-1 min-w-0 mr-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-sm font-medium ${started ? 'text-gray-700' : 'text-gray-400'}`}>{r.name}</span>
+                        {readyToLevel && <span className="text-amber-500 text-xs bg-amber-50 px-1.5 py-0.5 rounded-full shrink-0">⬆️ add weight</span>}
+                        {!started && <span className="text-gray-300 text-xs">not started</span>}
                       </div>
-                      {pct !== null && (
-                        <div className="mt-1 h-1 w-24 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${pct}%` }} />
+                      {r.goal && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%`, background: barColor }} />
+                          </div>
+                          <span className="text-xs text-gray-400 shrink-0">{Math.round(pct)}%</span>
                         </div>
                       )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-indigo-600 font-bold text-sm">{r.current} {r.unit}</div>
-                      {r.goal && <div className="text-gray-400 text-xs">goal: {r.goal} {r.unit}</div>}
+                    <div className="text-right shrink-0">
+                      <div className={`font-bold text-sm ${started ? 'text-indigo-600' : 'text-gray-300'}`}>
+                        {started ? `${r.current} ${r.unit}` : '—'}
+                      </div>
+                      {r.goal && <div className="text-gray-400 text-xs">/ {r.goal} {r.unit}</div>}
+                      {r.scheme && <div className="text-gray-300 text-xs">{r.scheme}</div>}
                     </div>
                   </div>
                 )
