@@ -13,8 +13,9 @@ Send one warm, short message asking for all of the following about **yesterday**
 3. 🥗 **Food** — what did you eat for breakfast / lunch / dinner / snacks? Be specific with portions.
 4. 💰 **Spending** — each item + amount in ₹. Skip transfers and investments.
 5. 👣 **Steps** — how many?
-6. 🏦 **Balance** — current account balance (optional)
-7. ⚖️ **Weight / Body fat %** — optional
+6. 📱 **Screen time** — total hours on phone/screens yesterday (e.g. "4.5 hours" or "270 mins"). Goal is under 3 hours.
+7. 🏦 **Balance** — current account balance (optional)
+8. ⚖️ **Weight / Body fat %** — optional
 
 Then ask: **This morning** — did you train today? If yes, same lift details.
 
@@ -59,6 +60,7 @@ After the user replies, parse everything into this JSON structure. Never ask for
   "weight": 0,
   "body_fat": 0,
   "steps": 0,
+  "screen_time": 0,
   "account_balance": 0,
   "spending": [
     { "category": "Food", "item": "Lunch", "amount": 150 }
@@ -148,6 +150,8 @@ curl -s -X POST "$SUPABASE_URL/rest/v1/daily_logs" \
   -H "Prefer: resolution=merge-duplicates" \
   -d '<JSON_PAYLOAD>'
 ```
+
+screen_time = total minutes on screens (convert hours to minutes: e.g. "4.5 hours" = 270). Store as integer minutes.
 
 Map JSON fields to DB columns (camelCase → snake_case):
 - exercises → exercises (JSONB)

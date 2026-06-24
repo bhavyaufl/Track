@@ -1,6 +1,106 @@
 import { useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
+
+const SCREEN_TIME_GOAL = 180 // minutes — 3 hours
+
+function fmt(mins) {
+  if (!mins) return '0h 0m'
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`
+}
+
+function ScreenTime({ logs }) {
+  const today = new Date().toISOString().split('T')[0]
+  const todayLog = logs.find(l => l.date === today)
+  const todayMins = todayLog?.screen_time || 0
+
+  const last7 = logs.slice(0, 7).reverse().map(l => ({
+    date: l.date?.slice(5),
+    mins: l.screen_time || 0,
+    hrs: ((l.screen_time || 0) / 60).toFixed(1),
+  }))
+
+  const avg = last7.length
+    ? Math.round(last7.reduce((s, d) => s + d.mins, 0) / last7.length)
+    : 0
+
+  const overGoal = todayMins > SCREEN_TIME_GOAL
+  const pct = Math.min((todayMins / SCREEN_TIME_GOAL) * 100, 100)
+
+  return (
+    <div className="space-y-4">
+      {/* Today card */}
+      <div className={`rounded-2xl p-5 border ${overGoal ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100 shadow-sm'}`}>
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-gray-500 text-xs font-medium uppercase tracking-wide">Today's Screen Time</div>
+            <div className={`text-4xl font-black mt-1 ${overGoal ? 'text-red-500' : 'text-gray-800'}`}>
+              {fmt(todayMins)}
+            </div>
+            <div className={`text-xs mt-1 ${overGoal ? 'text-red-400' : 'text-gray-400'}`}>
+              {overGoal
+                ? `${fmt(todayMins - SCREEN_TIME_GOAL)} over limit`
+                : todayMins ? `${fmt(SCREEN_TIME_GOAL - todayMins)} under goal ✓` : 'Not logged yet'}
+            </div>
+          </div>
+          <div className="text-4xl">📱</div>
+        </div>
+        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${pct}%`, background: overGoal ? '#ef4444' : '#6366f1' }} />
+        </div>
+        <div className="flex justify-between text-xs text-gray-400 mt-1">
+          <span>0</span>
+          <span className="text-indigo-400">Goal: {fmt(SCREEN_TIME_GOAL)}</span>
+          <span>{fmt(todayMins)}</span>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Today', val: fmt(todayMins), color: overGoal ? 'text-red-500' : 'text-gray-800', bg: overGoal ? 'bg-red-50' : 'bg-gray-50' },
+          { label: '7-day avg', val: fmt(avg), color: avg > SCREEN_TIME_GOAL ? 'text-amber-500' : 'text-emerald-600', bg: 'bg-gray-50' },
+          { label: 'Goal', val: fmt(SCREEN_TIME_GOAL), color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        ].map(s => (
+          <div key={s.label} className={`${s.bg} rounded-2xl p-3 text-center border border-gray-100`}>
+            <div className={`text-lg font-bold ${s.color}`}>{s.val}</div>
+            <div className="text-gray-400 text-xs mt-0.5">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 7-day chart */}
+      {last7.some(d => d.mins > 0) ? (
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+          <h3 className="text-gray-700 font-semibold mb-3">Last 7 Days</h3>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={last7} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <YAxis stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickFormatter={v => `${(v/60).toFixed(0)}h`} domain={[0, Math.max(SCREEN_TIME_GOAL * 1.5, 60)]} />
+              <Tooltip
+                contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+                formatter={v => [fmt(v), 'Screen time']} />
+              <ReferenceLine y={SCREEN_TIME_GOAL} stroke="#a5b4fc" strokeDasharray="4 2"
+                label={{ value: '3h goal', fill: '#818cf8', fontSize: 10, position: 'right' }} />
+              <Bar dataKey="mins" radius={[6, 6, 0, 0]} name="mins"
+                fill="#6366f1"
+                label={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
+          <div className="text-3xl mb-2">📱</div>
+          <div className="text-gray-400 text-sm">No screen time logged yet.</div>
+          <div className="text-gray-300 text-xs mt-1">Log it during /checkin each morning.</div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function WeightChart({ logs }) {
   const data = logs.filter(l => l.weight).slice(0, 30).reverse()
@@ -125,10 +225,10 @@ export default function Fitness({ logs, levels }) {
 
   return (
     <div className="space-y-4 fade-up">
-      <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
-        {[['levels','🏋️ Levels'],['weight','⚖️ Weight'],['history','📋 History']].map(([id, label]) => (
+      <div className="flex gap-1.5 bg-gray-100 rounded-xl p-1">
+        {[['levels','🏋️ Levels'],['weight','⚖️ Weight'],['screen','📱 Screen'],['history','📋 History']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
             }`}>
             {label}
@@ -160,6 +260,8 @@ export default function Fitness({ logs, levels }) {
           <WeightChart logs={logs} />
         </div>
       )}
+
+      {tab === 'screen' && <ScreenTime logs={logs} />}
 
       {tab === 'history' && (
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
