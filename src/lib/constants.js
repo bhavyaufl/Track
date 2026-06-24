@@ -6,10 +6,42 @@ export const GOALS = {
   steps: 10000,
   weightTarget: 85,
   bodyFatTarget: 12,
-  startWeight: 89,
+  startWeight: 91,
+  startBodyFat: 25,
   startDate: '2026-06-08',
   endDate: '2026-08-09',
 }
+
+// Exercise goals — target weight/reps to hit by Aug 9
+// unit: 'kg' | 'lbs' | 'reps' | 'min'
+// type: 'weight' (higher = better) | 'time' (lower = better) | 'reps' (higher = better)
+export const EXERCISE_GOALS = [
+  // Push
+  { name: 'Bench Press',            goal: 115,  unit: 'lbs', group: 'Push',   scheme: '5 reps',   type: 'weight' },
+  { name: 'Incline Bench Press',    goal: 100,  unit: 'lbs', group: 'Push',   scheme: '5 reps',   type: 'weight' },
+  { name: 'Shoulder Press',         goal: 40,   unit: 'kg',  group: 'Push',   scheme: '5 reps',   type: 'weight' },
+  { name: 'Lateral Raises',         goal: 12.5, unit: 'kg',  group: 'Push',   scheme: '3×12',     type: 'weight' },
+  { name: 'Tricep Pushdown',        goal: 150,  unit: 'lbs', group: 'Push',   scheme: '3×12',     type: 'weight' },
+  { name: 'Single Tricep Pushdown', goal: 50,   unit: 'lbs', group: 'Push',   scheme: '3×12',     type: 'weight' },
+  { name: 'Triceps Pullover',       goal: 150,  unit: 'lbs', group: 'Push',   scheme: '3×12',     type: 'weight' },
+  { name: 'Cable Chest Flies',      goal: 150,  unit: 'lbs', group: 'Push',   scheme: '3×12',     type: 'weight' },
+  // Pull
+  { name: 'Deadlift',               goal: 200,  unit: 'kg',  group: 'Pull',   scheme: '5 reps',   type: 'weight' },
+  { name: 'Lat Pulldown',           goal: 200,  unit: 'lbs', group: 'Pull',   scheme: '10×3',     type: 'weight' },
+  { name: 'Back Rows',              goal: 250,  unit: 'lbs', group: 'Pull',   scheme: '10×3',     type: 'weight' },
+  { name: 'Bicep Curls',            goal: 50,   unit: 'lbs', group: 'Pull',   scheme: 'each side',type: 'weight' },
+  { name: 'Bicep Hammer Curl',      goal: 35,   unit: 'kg',  group: 'Pull',   scheme: '3×12',     type: 'weight' },
+  { name: 'Preacher Curl',          goal: 180,  unit: 'lbs', group: 'Pull',   scheme: '3×12',     type: 'weight' },
+  { name: 'Pull-ups',               goal: 30,   unit: 'reps',group: 'Pull',   scheme: 'total',    type: 'reps'   },
+  // Legs
+  { name: 'Squats',                 goal: null, unit: 'kg',  group: 'Legs',   scheme: '3×12',     type: 'weight' },
+  { name: 'Leg Press',              goal: null, unit: 'kg',  group: 'Legs',   scheme: '3×12',     type: 'weight' },
+  { name: 'Leg Curl',               goal: 200,  unit: 'lbs', group: 'Legs',   scheme: '3×12',     type: 'weight' },
+  { name: 'Calf Raises',            goal: 100,  unit: 'lbs', group: 'Legs',   scheme: '12×3',     type: 'weight' },
+  // Cardio
+  { name: '5K Run',                 goal: 30,   unit: 'min', group: 'Cardio', scheme: 'sub-30',   type: 'time'   },
+  { name: 'Sally Up Sally Down',    goal: 3,    unit: 'min', group: 'Cardio', scheme: '3 mins',   type: 'time'   },
+]
 
 export const XP_TABLE = {
   logged: 10,

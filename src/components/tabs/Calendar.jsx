@@ -1,129 +1,114 @@
 import { GOALS } from '../../lib/constants'
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAY_LABELS = ['S','M','T','W','T','F','S']
 
-function getDayColor(log) {
-  if (!log) return '#1e293b' // no data
+function getDayStyle(log, inRange, isFuture) {
+  if (!inRange) return { bg: 'transparent', text: 'text-gray-200' }
+  if (isFuture) return { bg: '#f8fafc', text: 'text-gray-300', border: '1px solid #f1f5f9' }
+  if (!log) return { bg: '#fef2f2', text: 'text-red-300', border: '1px solid #fee2e2' }
   const score = log.daily_score || 0
-  if (score >= 80) return '#10b981'
-  if (score >= 50) return '#f59e0b'
-  if (score > 0) return '#6366f1'
-  return '#334155' // logged but 0 score
-}
-
-function getDayEmoji(log) {
-  if (!log) return ''
-  if (log.exercises?.length) return '🏋️'
-  if (log.cardio_type) return '🏃'
-  return '😴'
+  if (score >= 80) return { bg: '#d1fae5', text: 'text-emerald-700', border: '1px solid #a7f3d0' }
+  if (score >= 50) return { bg: '#eef2ff', text: 'text-indigo-600', border: '1px solid #c7d2fe' }
+  return { bg: '#fef9c3', text: 'text-yellow-600', border: '1px solid #fde68a' }
 }
 
 export default function Calendar({ logs }) {
   const start = new Date(GOALS.startDate)
   const end = new Date(GOALS.endDate)
   const today = new Date()
+  today.setHours(0,0,0,0)
 
-  // Build a map of date → log
   const logMap = {}
   logs.forEach(l => { logMap[l.date] = l })
 
-  // Build calendar weeks from start
-  const startDay = new Date(start)
-  startDay.setDate(startDay.getDate() - startDay.getDay()) // back to Sunday
+  const startSun = new Date(start)
+  startSun.setDate(startSun.getDate() - startSun.getDay())
 
   const weeks = []
-  let cur = new Date(startDay)
-
-  while (cur <= end || weeks.length < 10) {
+  let cur = new Date(startSun)
+  while (cur <= end) {
     const week = []
     for (let d = 0; d < 7; d++) {
       const dateStr = cur.toISOString().split('T')[0]
-      const inRange = cur >= start && cur <= end
-      const isFuture = cur > today
       week.push({
         date: dateStr,
-        inRange,
-        isFuture,
+        inRange: cur >= start && cur <= end,
+        isFuture: cur > today,
         log: logMap[dateStr] || null,
-        dayNum: cur.getDate(),
-        month: cur.getMonth(),
+        day: cur.getDate(),
+        isToday: cur.getTime() === today.getTime(),
       })
-      cur = new Date(cur)
-      cur.setDate(cur.getDate() + 1)
+      cur = new Date(cur); cur.setDate(cur.getDate() + 1)
     }
     weeks.push(week)
-    if (cur > end && !weeks.some(w => w.some(d => d.inRange && !d.isFuture && !d.log))) break
-    if (weeks.length > 15) break
+    if (weeks.length > 16) break
   }
 
   const daysLogged = logs.length
-  const totalDays = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1
-  const daysLeft = Math.floor((end - today) / (1000 * 60 * 60 * 24))
+  const daysElapsed = Math.floor((today - start) / 86400000) + 1
+  const daysLeft = Math.max(0, Math.floor((end - today) / 86400000))
+  const consistency = daysElapsed > 0 ? Math.round((daysLogged / daysElapsed) * 100) : 0
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-slate-800/60 rounded-xl p-3 text-center border border-slate-700/40">
-          <div className="text-2xl font-bold text-indigo-400">{daysLogged}</div>
-          <div className="text-slate-400 text-xs">Days logged</div>
-        </div>
-        <div className="bg-slate-800/60 rounded-xl p-3 text-center border border-slate-700/40">
-          <div className="text-2xl font-bold text-emerald-400">{totalDays}</div>
-          <div className="text-slate-400 text-xs">Days elapsed</div>
-        </div>
-        <div className="bg-slate-800/60 rounded-xl p-3 text-center border border-slate-700/40">
-          <div className="text-2xl font-bold text-yellow-400">{Math.max(daysLeft, 0)}</div>
-          <div className="text-slate-400 text-xs">Days to Aug 9</div>
-        </div>
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { val: daysLogged, label: 'Logged', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { val: daysElapsed, label: 'Elapsed', color: 'text-gray-700', bg: 'bg-gray-100' },
+          { val: daysLeft, label: 'Remaining', color: 'text-amber-600', bg: 'bg-amber-50' },
+          { val: `${consistency}%`, label: 'Consistency', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        ].map(s => (
+          <div key={s.label} className={`${s.bg} rounded-2xl p-3 text-center`}>
+            <div className={`text-xl font-bold ${s.color}`}>{s.val}</div>
+            <div className="text-gray-400 text-xs mt-0.5">{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/40 overflow-x-auto">
-        <div className="grid grid-cols-7 gap-1 mb-2 min-w-[350px]">
-          {DAY_LABELS.map(d => (
-            <div key={d} className="text-center text-slate-500 text-xs">{d}</div>
-          ))}
-        </div>
-
-        <div className="space-y-1 min-w-[350px]">
-          {weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 gap-1">
-              {week.map(day => (
-                <div key={day.date}
-                  className="aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative cursor-default"
-                  style={{
-                    background: !day.inRange ? 'transparent' :
-                      day.isFuture ? '#0f172a' :
-                      getDayColor(day.log),
-                    opacity: !day.inRange ? 0.2 : 1,
-                    border: day.date === new Date().toISOString().split('T')[0] ? '2px solid #6366f1' : '2px solid transparent',
-                  }}
-                  title={day.date}>
-                  {day.inRange && !day.isFuture && (
-                    <>
-                      <span className="text-xs">{getDayEmoji(day.log)}</span>
-                      <span className="text-white/70 text-xs leading-none">{day.dayNum}</span>
-                    </>
-                  )}
-                  {day.inRange && day.isFuture && (
-                    <span className="text-slate-700 text-xs">{day.dayNum}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm overflow-x-auto">
+        <div className="min-w-[320px]">
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {DAY_LABELS.map((d, i) => (
+              <div key={i} className="text-center text-gray-300 text-xs font-medium">{d}</div>
+            ))}
+          </div>
+          <div className="space-y-1">
+            {weeks.map((week, wi) => (
+              <div key={wi} className="grid grid-cols-7 gap-1">
+                {week.map(day => {
+                  const s = getDayStyle(day.log, day.inRange, day.isFuture)
+                  return (
+                    <div key={day.date}
+                      className="aspect-square rounded-lg flex items-center justify-center text-xs font-medium relative"
+                      style={{
+                        background: s.bg,
+                        border: day.isToday ? '2px solid #6366f1' : s.border || 'none',
+                      }}
+                      title={`${day.date}${day.log ? ` · Score: ${day.log.daily_score}` : ''}`}>
+                      {day.inRange && (
+                        <span className={s.text}>{day.day}</span>
+                      )}
+                      {day.inRange && !day.isFuture && day.log?.exercises?.length > 0 && (
+                        <div className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-4 mt-4 flex-wrap">
           {[
-            { color: '#10b981', label: '80+ score' },
-            { color: '#f59e0b', label: '50–79 score' },
-            { color: '#6366f1', label: 'Logged' },
-            { color: '#334155', label: 'Rest' },
-            { color: '#1e293b', label: 'Missed' },
+            { color: '#d1fae5', border: '#a7f3d0', label: '80+ score' },
+            { color: '#eef2ff', border: '#c7d2fe', label: '50–79 score' },
+            { color: '#fef9c3', border: '#fde68a', label: 'Logged' },
+            { color: '#fef2f2', border: '#fee2e2', label: 'Missed' },
           ].map(l => (
             <div key={l.label} className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded" style={{ background: l.color }} />
-              <span className="text-slate-400 text-xs">{l.label}</span>
+              <div className="w-3 h-3 rounded" style={{ background: l.color, border: `1px solid ${l.border}` }} />
+              <span className="text-gray-400 text-xs">{l.label}</span>
             </div>
           ))}
         </div>

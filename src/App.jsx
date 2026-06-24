@@ -11,21 +11,21 @@ import History from './components/tabs/History'
 import clsx from 'clsx'
 
 const TABS = [
-  { id: 'today', label: '🏠 Today' },
-  { id: 'fitness', label: '💪 Fitness' },
-  { id: 'calories', label: '🔥 Calories' },
-  { id: 'finance', label: '💰 Finance' },
-  { id: 'power', label: '🏆 Power Level' },
-  { id: 'calendar', label: '📅 Calendar' },
-  { id: 'history', label: '📋 History' },
+  { id: 'today',    label: '🏠', full: 'Today' },
+  { id: 'fitness',  label: '💪', full: 'Fitness' },
+  { id: 'calories', label: '🔥', full: 'Calories' },
+  { id: 'finance',  label: '💰', full: 'Finance' },
+  { id: 'power',    label: '🏆', full: 'Power' },
+  { id: 'calendar', label: '📅', full: 'Calendar' },
+  { id: 'history',  label: '📋', full: 'History' },
 ]
 
 function LoadingScreen() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen bg-white">
       <div className="text-center space-y-3">
         <div className="text-5xl animate-pulse">⚡</div>
-        <div className="text-slate-400">Loading your tracker…</div>
+        <div className="text-gray-400 text-sm">Loading your tracker…</div>
       </div>
     </div>
   )
@@ -38,45 +38,49 @@ export default function App() {
   const badges = useAchievements()
   const { log: todayLog, loading: todayLoading } = useTodayLog()
 
-  const loading = logsLoading || levelsLoading || todayLoading
-
-  if (loading) return <LoadingScreen />
+  if (logsLoading || levelsLoading || todayLoading) return <LoadingScreen />
 
   const totalXP = logs.reduce((sum, l) => sum + (l.xp_earned || 0), 0)
   const latestWeight = logs.find(l => l.weight)?.weight
+  const daysLeft = Math.max(0, Math.floor((new Date('2026-08-09') - new Date()) / 86400000))
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-slate-800/80 border-b border-slate-700/50 sticky top-0 z-10 backdrop-blur">
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-white">Bhavya's Tracker</h1>
-            <div className="text-xs text-slate-400">Jun 8 → Aug 9, 2026</div>
+            <h1 className="text-base font-bold text-gray-900">Bhavya's Tracker</h1>
+            <div className="text-xs text-gray-400">{daysLeft} days to Aug 9</div>
           </div>
-          <div className="text-right">
-            <div className="text-yellow-400 text-sm font-bold">⚡ {totalXP.toLocaleString()} XP</div>
+          <div className="flex items-center gap-3">
             {latestWeight && (
-              <div className="text-slate-400 text-xs">{latestWeight} kg</div>
+              <div className="text-right">
+                <div className="text-xs text-gray-400">Weight</div>
+                <div className="text-sm font-bold text-gray-700">{latestWeight} kg</div>
+              </div>
             )}
+            <div className="bg-indigo-50 rounded-xl px-3 py-1.5 text-center">
+              <div className="text-xs text-indigo-400">XP</div>
+              <div className="text-sm font-black text-indigo-600">⚡{totalXP.toLocaleString()}</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="bg-slate-800/50 border-b border-slate-700/30 sticky top-[57px] z-10 overflow-x-auto">
-        <div className="max-w-2xl mx-auto px-2 flex gap-0.5 min-w-max">
+      <div className="bg-white border-b border-gray-100 sticky top-[57px] z-10">
+        <div className="max-w-2xl mx-auto flex">
           {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'px-3 py-2.5 text-xs whitespace-nowrap font-medium transition-all border-b-2',
+                'flex-1 flex flex-col items-center py-2 text-xs font-medium transition-colors border-b-2',
                 activeTab === tab.id
-                  ? 'text-indigo-400 border-indigo-400'
-                  : 'text-slate-500 border-transparent hover:text-slate-300'
+                  ? 'text-indigo-600 border-indigo-500'
+                  : 'text-gray-400 border-transparent hover:text-gray-600'
               )}>
-              {tab.label}
+              <span className="text-base">{tab.label}</span>
+              <span className="text-xs mt-0.5 hidden sm:block">{tab.full}</span>
             </button>
           ))}
         </div>
@@ -85,23 +89,21 @@ export default function App() {
       {/* Setup banner */}
       {!isConfigured && (
         <div className="max-w-2xl mx-auto px-4 pt-4">
-          <div className="bg-yellow-900/40 border border-yellow-700/50 rounded-xl px-4 py-3 text-sm text-yellow-300">
-            ⚠️ <strong>Supabase not connected.</strong> Add your project URL and anon key to{' '}
-            <code className="text-yellow-200 bg-yellow-900/50 px-1 rounded">.env.local</code>{' '}
-            then restart the dev server. Showing empty state.
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
+            ⚠️ Add your Supabase keys to <code className="bg-amber-100 px-1 rounded">.env.local</code> then restart.
           </div>
         </div>
       )}
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-5">
-        {activeTab === 'today' && <Today log={todayLog} />}
-        {activeTab === 'fitness' && <Fitness logs={logs} levels={levels} />}
+      <div className="max-w-2xl mx-auto px-4 py-5 pb-10">
+        {activeTab === 'today'    && <Today log={todayLog} />}
+        {activeTab === 'fitness'  && <Fitness logs={logs} levels={levels} />}
         {activeTab === 'calories' && <Calories todayLog={todayLog} logs={logs} />}
-        {activeTab === 'finance' && <Finance logs={logs} />}
-        {activeTab === 'power' && <PowerLevel logs={logs} badges={badges} />}
+        {activeTab === 'finance'  && <Finance logs={logs} />}
+        {activeTab === 'power'    && <PowerLevel logs={logs} badges={badges} levels={levels} />}
         {activeTab === 'calendar' && <Calendar logs={logs} />}
-        {activeTab === 'history' && <History logs={logs} />}
+        {activeTab === 'history'  && <History logs={logs} />}
       </div>
     </div>
   )
