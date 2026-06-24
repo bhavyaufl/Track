@@ -50,7 +50,7 @@ export default function Calendar({ logs }) {
   const consistency = daysElapsed > 0 ? Math.round((daysLogged / daysElapsed) * 100) : 0
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 fade-up">
       <div className="grid grid-cols-4 gap-3">
         {[
           { val: daysLogged, label: 'Logged', color: 'text-indigo-600', bg: 'bg-indigo-50' },

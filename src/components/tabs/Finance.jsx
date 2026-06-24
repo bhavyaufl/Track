@@ -67,7 +67,7 @@ export default function Finance({ logs }) {
   const latestBalance = logs.find(l => l.account_balance)?.account_balance
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 fade-up">
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">

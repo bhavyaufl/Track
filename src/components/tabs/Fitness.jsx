@@ -112,7 +112,7 @@ export default function Fitness({ logs, levels }) {
   const [tab, setTab] = useState('levels')
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 fade-up">
       <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
         {[['levels','🏋️ Levels'],['weight','⚖️ Weight'],['history','📋 History']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}

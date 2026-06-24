@@ -53,7 +53,7 @@ export default function Calories({ todayLog, logs }) {
   const kgLost = Math.max((totalDeficit / 7700).toFixed(2), 0)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 fade-up">
       {/* Today's intake */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
         <div className="flex justify-between items-start mb-3">

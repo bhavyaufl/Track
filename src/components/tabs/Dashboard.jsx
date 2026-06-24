@@ -390,7 +390,7 @@ function EarnedBadges({ badges }) {
 
 export default function Dashboard({ logs, levels, badges, todayLog }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 fade-up">
       <HeroBanner logs={logs} levels={levels} todayLog={todayLog} />
       <TodaySnapshot todayLog={todayLog} />
       <Streaks logs={logs} />

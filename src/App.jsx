@@ -6,7 +6,6 @@ import Today from './components/tabs/Today'
 import Fitness from './components/tabs/Fitness'
 import Calories from './components/tabs/Calories'
 import Finance from './components/tabs/Finance'
-import PowerLevel from './components/tabs/PowerLevel'
 import Calendar from './components/tabs/Calendar'
 import History from './components/tabs/History'
 import clsx from 'clsx'
@@ -17,7 +16,6 @@ const TABS = [
   { id: 'fitness',   emoji: '💪', label: 'Fitness' },
   { id: 'calories',  emoji: '🔥', label: 'Calories' },
   { id: 'finance',   emoji: '💰', label: 'Finance' },
-  { id: 'power',     emoji: '🏆', label: 'Power' },
   { id: 'calendar',  emoji: '📅', label: 'Calendar' },
   { id: 'history',   emoji: '📋', label: 'History' },
 ]
@@ -25,9 +23,10 @@ const TABS = [
 function LoadingScreen() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center space-y-3">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl mx-auto animate-pulse">⚡</div>
-        <div className="text-gray-400 text-sm">Loading your tracker…</div>
+      <div className="text-center space-y-4">
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-4xl mx-auto shadow-lg shadow-indigo-200"
+          style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>⚡</div>
+        <div className="text-gray-400 text-sm font-medium">Loading your tracker…</div>
       </div>
     </div>
   )
@@ -45,68 +44,82 @@ export default function App() {
   const totalXP = logs.reduce((sum, l) => sum + (l.xp_earned || 0), 0)
   const daysLeft = Math.max(0, Math.floor((new Date('2026-08-09') - new Date()) / 86400000))
   const todayScore = todayLog?.daily_score || 0
+  const latestWeight = logs.find(l => l.weight)?.weight
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-20"
+        style={{ boxShadow: '0 1px 20px rgba(0,0,0,0.06)' }}>
+        <div className="max-w-3xl mx-auto px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">B</div>
+            <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-white text-base font-black shadow-md shadow-indigo-200"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>B</div>
             <div>
-              <div className="text-gray-900 font-bold text-sm leading-none">Bhavya's Tracker</div>
+              <div className="text-gray-900 font-bold text-sm leading-tight">Bhavya's Tracker</div>
               <div className="text-gray-400 text-xs">{daysLeft} days to Aug 9</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            {latestWeight && (
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl px-3 py-1.5 text-center">
+                <div className="text-xs font-bold text-gray-700">{latestWeight} kg</div>
+                <div className="text-gray-400 text-xs leading-none">weight</div>
+              </div>
+            )}
             {todayScore > 0 && (
-              <div className="bg-gray-100 rounded-xl px-2.5 py-1.5 text-center">
-                <div className="text-xs font-bold text-gray-600">{todayScore}/100</div>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-3 py-1.5 text-center">
+                <div className="text-xs font-bold text-emerald-600">{todayScore}/100</div>
                 <div className="text-gray-400 text-xs leading-none">today</div>
               </div>
             )}
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl px-2.5 py-1.5 text-center">
-              <div className="text-xs font-black text-white">⚡{totalXP.toLocaleString()}</div>
+            <div className="rounded-2xl px-3 py-1.5 text-center shadow-sm shadow-indigo-100"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
+              <div className="text-xs font-black text-white">⚡ {totalXP.toLocaleString()}</div>
               <div className="text-white/60 text-xs leading-none">XP</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tab bar — scrollable */}
-      <div className="bg-white border-b border-gray-100 sticky top-[57px] z-10 overflow-x-auto">
-        <div className="max-w-2xl mx-auto flex min-w-max px-2">
+      {/* Tab bar */}
+      <div className="bg-white border-b border-gray-100 sticky top-[61px] z-10 overflow-x-auto"
+        style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+        <div className="max-w-3xl mx-auto flex min-w-max">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'flex items-center gap-1.5 px-3 py-3 text-xs font-medium whitespace-nowrap transition-all border-b-2',
+                'flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap transition-all border-b-2 relative',
                 activeTab === tab.id
                   ? 'text-indigo-600 border-indigo-500'
-                  : 'text-gray-400 border-transparent hover:text-gray-600'
+                  : 'text-gray-400 border-transparent hover:text-gray-700 hover:bg-gray-50'
               )}>
-              <span>{tab.emoji}</span>
+              <span className="text-base">{tab.emoji}</span>
               <span>{tab.label}</span>
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #6366f1, #a855f7)' }} />
+              )}
             </button>
           ))}
         </div>
       </div>
 
       {!isConfigured && (
-        <div className="max-w-2xl mx-auto px-4 pt-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
+        <div className="max-w-3xl mx-auto px-5 pt-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
             ⚠️ Add Supabase keys to <code className="bg-amber-100 px-1 rounded">.env.local</code> then restart.
           </div>
         </div>
       )}
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-5 pb-12">
+      <div className="max-w-3xl mx-auto px-5 py-6 pb-16">
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
         {activeTab === 'today'     && <Today log={todayLog} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}
         {activeTab === 'calories'  && <Calories todayLog={todayLog} logs={logs} />}
         {activeTab === 'finance'   && <Finance logs={logs} />}
-        {activeTab === 'power'     && <PowerLevel logs={logs} badges={badges} levels={levels} />}
         {activeTab === 'calendar'  && <Calendar logs={logs} />}
         {activeTab === 'history'   && <History logs={logs} />}
       </div>

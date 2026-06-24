@@ -108,7 +108,7 @@ export default function History({ logs }) {
   })
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 fade-up">
       <div className="relative">
         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300">🔍</span>
         <input type="text" placeholder="Search logs…" value={search}
