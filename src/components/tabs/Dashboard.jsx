@@ -212,32 +212,93 @@ function CalorieTrend({ logs }) {
 }
 
 function WeightTrend({ logs }) {
-  const data = logs.filter(l => l.weight).slice(0, 14).reverse()
-    .map(l => ({ date: l.date?.slice(5), w: Number(l.weight) }))
-  if (data.length < 2) return null
+  const weightLogs = logs.filter(l => l.weight).slice(0, 30).reverse()
+  // Always include start point
+  const data = weightLogs.length
+    ? weightLogs.map(l => ({ date: l.date?.slice(5), w: Number(l.weight) }))
+    : [{ date: GOALS.startDate.slice(5), w: GOALS.startWeight }]
+
+  const latest = weightLogs[weightLogs.length - 1]?.weight || GOALS.startWeight
+  const lost = (GOALS.startWeight - latest).toFixed(1)
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-semibold text-gray-700">Weight Trend</h3>
-        <span className="text-xs text-gray-400">{GOALS.startWeight} → {GOALS.weightTarget} kg</span>
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="font-semibold text-gray-700">Weight</h3>
+        <div className="text-right">
+          <div className="text-lg font-black text-emerald-600">{latest} kg</div>
+          <div className="text-xs text-gray-400">
+            {lost > 0 ? `−${lost} kg lost` : `goal: ${GOALS.weightTarget} kg`}
+          </div>
+        </div>
       </div>
-      <ResponsiveContainer width="100%" height={120}>
+      <ResponsiveContainer width="100%" height={130}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
               <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={['dataMin-1','dataMax+1']} width={35} />
+          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }}
+            domain={[Math.min(GOALS.weightTarget - 1, latest - 1), GOALS.startWeight + 1]} width={32} />
           <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
             formatter={v => [`${v} kg`, 'Weight']} />
-          <ReferenceLine y={GOALS.weightTarget} stroke="#6ee7b7" strokeDasharray="4 2" label={{ value:'85 kg', fill:'#6ee7b7', fontSize:10 }} />
+          <ReferenceLine y={GOALS.weightTarget} stroke="#6ee7b7" strokeDasharray="4 2"
+            label={{ value: `${GOALS.weightTarget}kg`, fill: '#6ee7b7', fontSize: 9, position: 'right' }} />
           <Area type="monotone" dataKey="w" stroke="#10b981" strokeWidth={2.5}
             fill="url(#wGrad)" dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} name="kg" />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function BalanceTrend({ logs }) {
+  const balanceLogs = logs.filter(l => l.account_balance).slice(0, 30).reverse()
+  const data = balanceLogs.map(l => ({ date: l.date?.slice(5), bal: Number(l.account_balance) }))
+  const latest = balanceLogs[balanceLogs.length - 1]?.account_balance
+
+  if (!data.length) return (
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between" style={{ minHeight: 200 }}>
+      <h3 className="font-semibold text-gray-700">Balance</h3>
+      <div className="text-center text-gray-300 text-sm py-6">No balance data yet</div>
+    </div>
+  )
+
+  const first = data[0]?.bal || 0
+  const diff = latest - first
+  const up = diff >= 0
+
+  return (
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="font-semibold text-gray-700">Balance</h3>
+        <div className="text-right">
+          <div className="text-lg font-black text-indigo-600">₹{Number(latest).toLocaleString()}</div>
+          <div className={`text-xs font-medium ${up ? 'text-emerald-500' : 'text-red-400'}`}>
+            {up ? '+' : ''}₹{diff.toLocaleString()} this period
+          </div>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={130}>
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
+              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={40}
+            tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} domain={['dataMin - 1000', 'dataMax + 1000']} />
+          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+            formatter={v => [`₹${Number(v).toLocaleString()}`, 'Balance']} />
+          <Area type="monotone" dataKey="bal" stroke="#6366f1" strokeWidth={2.5}
+            fill="url(#balGrad)" dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} name="Balance" />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -395,7 +456,10 @@ export default function Dashboard({ logs, levels, badges, todayLog }) {
       <TodaySnapshot todayLog={todayLog} />
       <Streaks logs={logs} />
       <CalorieTrend logs={logs} />
-      {logs.filter(l => l.weight).length >= 2 && <WeightTrend logs={logs} />}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <WeightTrend logs={logs} />
+        <BalanceTrend logs={logs} />
+      </div>
       <LiftSnapshot levels={levels} />
       <BodyComp logs={logs} />
       <RecentWorkouts logs={logs} />
