@@ -116,7 +116,7 @@ export default function App() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-5 py-6 pb-16">
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
-        {activeTab === 'today'     && <Today log={todayLog} />}
+        {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}
         {activeTab === 'calories'  && <Calories todayLog={todayLog} logs={logs} />}
         {activeTab === 'finance'   && <Finance logs={logs} />}

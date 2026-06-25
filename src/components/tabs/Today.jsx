@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { GOALS } from '../../lib/constants'
 
 function RemainCard({ label, remaining, consumed, total, unit, icon, color, bgColor, borderColor }) {
@@ -189,7 +190,97 @@ function Spending({ log }) {
   )
 }
 
-export default function Today({ log }) {
+function YesterdayLog({ log }) {
+  const [open, setOpen] = useState(false)
+  if (!log) return null
+
+  const macros = log.macros || { p: 0, c: 0, f: 0 }
+  const score = log.daily_score || 0
+  const scoreColor = score >= 80 ? 'text-emerald-600 bg-emerald-50' : score >= 50 ? 'text-indigo-600 bg-indigo-50' : 'text-amber-600 bg-amber-50'
+  const spent = (log.spending || []).reduce((s, e) => s + e.amount, 0)
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        onClick={() => setOpen(o => !o)}>
+        <div className="flex items-center gap-3">
+          <span className="text-gray-700 font-semibold text-sm">Yesterday · {log.date}</span>
+          {log.muscles?.map(m => (
+            <span key={m} className="text-xs bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full">{m}</span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${scoreColor}`}>{score}/100</span>
+          <span className="text-gray-300 text-xs">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 border-t border-gray-50 space-y-3 pt-3">
+          {/* Quick stats */}
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'Calories', val: `${log.calories || 0}` },
+              { label: 'Protein', val: `${macros.p}g` },
+              { label: 'Steps', val: (log.steps || 0).toLocaleString() },
+              { label: 'Spent', val: `₹${spent}` },
+            ].map(s => (
+              <div key={s.label} className="bg-gray-50 rounded-xl p-2 text-center">
+                <div className="text-gray-700 text-sm font-semibold">{s.val}</div>
+                <div className="text-gray-400 text-xs">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Goals hit */}
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { label: 'Logged', hit: true },
+              { label: `Protein ${macros.p}g`, hit: macros.p >= GOALS.protein },
+              { label: `Cals ${log.calories || 0}`, hit: log.calories >= GOALS.calories.min && log.calories <= GOALS.calories.max },
+              { label: `Steps ${(log.steps||0).toLocaleString()}`, hit: log.steps >= GOALS.steps },
+              { label: 'Gym/Cardio', hit: !!(log.exercises?.length || log.cardio_type) },
+            ].map(g => (
+              <span key={g.label}
+                className={`text-xs px-2.5 py-1 rounded-full font-medium ${g.hit ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                {g.hit ? '✓' : '✗'} {g.label}
+              </span>
+            ))}
+          </div>
+
+          {/* Meals */}
+          {(log.breakfast || log.lunch || log.dinner || log.snacks) && (
+            <div className="space-y-1">
+              {[['🌅','breakfast'],['☀️','lunch'],['🌙','dinner'],['🍿','snacks']].map(([e,k]) =>
+                log[k] && (
+                  <div key={k} className="flex gap-2 text-sm">
+                    <span>{e}</span>
+                    <span className="text-gray-600">{log[k]}</span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {/* Spending */}
+          {log.spending?.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-gray-400 text-xs uppercase tracking-wide">Spending</div>
+              {log.spending.map((s, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-gray-600">{s.item}</span>
+                  <span className="text-gray-700 font-medium">₹{s.amount}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Today({ log, yesterdayLog }) {
   const macros = log?.macros || { p: 0, c: 0, f: 0 }
   const cal = log?.calories || 0
   const steps = log?.steps || 0
@@ -235,6 +326,13 @@ export default function Today({ log }) {
       <GoalList log={log} />
       <Meals log={log} />
       <Spending log={log} />
+
+      {yesterdayLog && (
+        <div>
+          <h2 className="text-gray-400 text-xs font-semibold uppercase tracking-wider px-1 mb-3">Yesterday's Log</h2>
+          <YesterdayLog log={yesterdayLog} />
+        </div>
+      )}
 
       {log?.badges_unlocked?.length > 0 && (
         <div className="bg-yellow-50 rounded-2xl p-4 border border-yellow-100">
