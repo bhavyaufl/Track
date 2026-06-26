@@ -108,9 +108,20 @@ async function saveLog(date, update, exists) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { message, date, image } = req.body || {}
+  const { message, date, image, confirmedUpdate } = req.body || {}
   if (!date) return res.status(400).json({ error: 'date required' })
-  if (!message && !image) return res.status(400).json({ error: 'message or image required' })
+  if (!message && !image && !confirmedUpdate) return res.status(400).json({ error: 'message or image required' })
+
+  // Confirmed save path — skip Claude, just write the pre-approved update
+  if (confirmedUpdate) {
+    const existing = await fetchLog(date)
+    try {
+      await saveLog(date, confirmedUpdate, !!existing)
+    } catch {
+      return res.status(500).json({ message: '⚠️ Failed to save to database.' })
+    }
+    return res.status(200).json({ message: confirmedUpdate._confirmMessage || '✓ Logged!' })
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ message: '⚠️ ANTHROPIC_API_KEY not set in Vercel environment variables.' })
@@ -155,6 +166,15 @@ export default async function handler(req, res) {
 
   if (!result?.update) {
     return res.status(200).json({ message: result?.message || "Couldn't understand that. Please be more specific." })
+  }
+
+  // For image-based logs, return pending confirmation instead of saving directly
+  if (image) {
+    return res.status(200).json({
+      message: result.message,
+      pendingUpdate: result.update,
+      requiresConfirm: true,
+    })
   }
 
   try {

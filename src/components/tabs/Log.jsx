@@ -31,20 +31,41 @@ const QUICK_CHIPS = [
   { label: '📱 Screen', fill: ' hours screen time' },
 ]
 
-function Bubble({ role, text, image }) {
+function Bubble({ role, text, image, pendingUpdate, date, onConfirm, onDismiss }) {
   const isUser = role === 'user'
+  const u = pendingUpdate
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} fade-up`}>
       {!isUser && (
         <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-sm shrink-0 mr-2 mt-0.5">🤖</div>
       )}
-      <div className={`max-w-[82%] rounded-2xl overflow-hidden text-sm leading-relaxed ${
+      <div className={`max-w-[90%] rounded-2xl overflow-hidden text-sm leading-relaxed ${
         isUser
           ? 'bg-indigo-600 text-white rounded-br-sm'
           : 'bg-white border border-gray-100 shadow-sm text-gray-700 rounded-bl-sm'
       }`}>
         {image && <img src={image} alt="food" className="w-full max-h-48 object-cover" />}
         {text && <div className="px-4 py-2.5">{text}</div>}
+        {u && (
+          <div className="px-4 pb-3">
+            <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs space-y-1">
+              {u.calories > 0 && <div className="flex justify-between"><span className="text-gray-500">Calories</span><span className="font-semibold text-gray-700">{u.calories} kcal</span></div>}
+              {u.macros?.p > 0 && <div className="flex justify-between"><span className="text-gray-500">Protein</span><span className="font-semibold text-gray-700">{u.macros.p}g</span></div>}
+              {u.macros?.c > 0 && <div className="flex justify-between"><span className="text-gray-500">Carbs</span><span className="font-semibold text-gray-700">{u.macros.c}g</span></div>}
+              {u.macros?.f > 0 && <div className="flex justify-between"><span className="text-gray-500">Fat</span><span className="font-semibold text-gray-700">{u.macros.f}g</span></div>}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => onConfirm(u, date)}
+                className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-2 rounded-xl hover:bg-indigo-700 active:scale-95 transition-all">
+                ✓ Log it
+              </button>
+              <button onClick={() => onDismiss(u)}
+                className="flex-1 bg-gray-100 text-gray-500 text-xs font-semibold py-2 rounded-xl hover:bg-gray-200 transition-all">
+                ✕ Fix it
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -143,14 +164,57 @@ export default function Log({ onLogged }) {
         body: JSON.stringify({ message: msg || 'What food is in this image? Estimate the macros and log it.', date: today, image: imageB64 }),
       })
       const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', text: data.message || 'Done!' }])
-      if (!data.message?.startsWith('⚠️')) onLogged?.()
+
+      if (data.requiresConfirm && data.pendingUpdate) {
+        // Show macros + confirm/edit buttons — don't log yet
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          text: data.message,
+          pendingUpdate: data.pendingUpdate,
+          date: today,
+        }])
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', text: data.message || 'Done!' }])
+        if (!data.message?.startsWith('⚠️')) onLogged?.()
+      }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', text: '⚠️ Network error. Check your connection and try again.' }])
     } finally {
       setLoading(false)
       inputRef.current?.focus()
     }
+  }
+
+  async function confirmLog(pendingUpdate, date) {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, confirmedUpdate: { ...pendingUpdate, _confirmMessage: '✓ Logged! Macros saved.' } }),
+      })
+      const data = await res.json()
+      setMessages(prev => prev.map(m =>
+        m.pendingUpdate === pendingUpdate
+          ? { ...m, pendingUpdate: null, confirmed: true }
+          : m
+      ))
+      setMessages(prev => [...prev, { role: 'assistant', text: data.message || '✓ Logged!' }])
+      onLogged?.()
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: '⚠️ Failed to save. Try again.' }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function dismissConfirm(pendingUpdate) {
+    setMessages(prev => prev.map(m =>
+      m.pendingUpdate === pendingUpdate
+        ? { ...m, pendingUpdate: null, confirmed: false, dismissed: true }
+        : m
+    ))
+    setMessages(prev => [...prev, { role: 'assistant', text: "Okay, not logged. Tell me what to adjust and I'll re-estimate." }])
   }
 
   function handleChip(fill) {
@@ -178,7 +242,11 @@ export default function Log({ onLogged }) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-2">
-        {messages.map((m, i) => <Bubble key={i} role={m.role} text={m.text} />)}
+        {messages.map((m, i) => (
+          <Bubble key={i} role={m.role} text={m.text} image={m.image}
+            pendingUpdate={m.pendingUpdate} date={m.date}
+            onConfirm={confirmLog} onDismiss={dismissConfirm} />
+        ))}
         {loading && <TypingDots />}
         <div ref={bottomRef} />
       </div>

@@ -1,4 +1,165 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../../lib/supabase'
+
+async function resizeToBase64(file, maxPx) {
+  return new Promise(resolve => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * ratio)
+      canvas.height = Math.round(img.height * ratio)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => {
+        const reader = new FileReader()
+        reader.onload = e => resolve(e.target.result.split(',')[1])
+        reader.readAsDataURL(blob)
+      }, 'image/jpeg', 0.8)
+    }
+    img.src = url
+  })
+}
+
+function BodyProgress() {
+  const today = new Date().toISOString().split('T')[0]
+  const [photos, setPhotos] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [note, setNote] = useState('')
+  const fileRef = useRef(null)
+
+  useEffect(() => {
+    supabase.from('progress_photos')
+      .select('id,date,photo_thumb,analysis')
+      .order('date', { ascending: false })
+      .limit(60)
+      .then(({ data }) => setPhotos(data || []))
+  }, [])
+
+  const todayPhoto = photos.find(p => p.date === today)
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setUploading(true)
+    try {
+      const [full, thumb] = await Promise.all([
+        resizeToBase64(file, 800),
+        resizeToBase64(file, 300),
+      ])
+      const res = await fetch('/api/progress-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: today, image: full, thumb, note }),
+      })
+      const data = await res.json()
+      setNote('')
+      // Refresh
+      const { data: updated } = await supabase.from('progress_photos')
+        .select('id,date,photo_thumb,analysis').order('date', { ascending: false }).limit(60)
+      setPhotos(updated || [])
+      if (data.analysis) setSelected({ photo_thumb: `data:image/jpeg;base64,${thumb}`, analysis: data.analysis, date: today })
+    } catch { /* silent */ }
+    setUploading(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Upload card */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-gray-700 font-semibold text-sm">Daily Progress Photo</h3>
+            <div className="text-gray-400 text-xs">{today}</div>
+          </div>
+          {todayPhoto && <span className="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-medium">✓ Logged today</span>}
+        </div>
+
+        {!todayPhoto && (
+          <input
+            className="w-full text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl px-3 py-2 mb-3 focus:outline-none focus:border-indigo-300"
+            placeholder="Optional note (e.g. morning, after pump...)"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+          />
+        )}
+
+        <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handleFile} />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className={`w-full py-3 rounded-2xl text-sm font-semibold transition-all ${
+            uploading
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : todayPhoto
+              ? 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'
+          }`}>
+          {uploading ? '⏳ Analysing with Claude…' : todayPhoto ? '📸 Update today\'s photo' : '📸 Take today\'s progress photo'}
+        </button>
+      </div>
+
+      {/* Gallery */}
+      {photos.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+          <h3 className="text-gray-700 font-semibold text-sm mb-3">Progress Gallery · {photos.length} photos</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map(p => (
+              <button key={p.id} onClick={() => setSelected(p)}
+                className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 hover:ring-2 hover:ring-indigo-400 transition-all">
+                {p.photo_thumb
+                  ? <img src={`data:image/jpeg;base64,${p.photo_thumb}`} alt={p.date}
+                      className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">📷</div>
+                }
+                <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-xs text-center py-0.5">
+                  {p.date?.slice(5)}
+                </div>
+                {p.date === today && (
+                  <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-white" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {photos.length === 0 && !uploading && (
+        <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-100">
+          <div className="text-4xl mb-2">📸</div>
+          <div className="text-gray-500 text-sm font-medium">No photos yet</div>
+          <div className="text-gray-400 text-xs mt-1">Take your first progress photo above</div>
+        </div>
+      )}
+
+      {/* Selected photo modal */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex flex-col" onClick={() => setSelected(null)}>
+          <div className="flex-1 flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-3xl overflow-hidden max-w-sm w-full shadow-2xl">
+              {selected.photo_thumb && (
+                <img src={`data:image/jpeg;base64,${selected.photo_thumb}`} alt="progress"
+                  className="w-full object-cover max-h-72" />
+              )}
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-500 text-xs font-medium">{selected.date}</span>
+                  <button onClick={() => setSelected(null)} className="text-gray-400 text-xs">Close ✕</button>
+                </div>
+                {selected.analysis && (
+                  <p className="text-gray-600 text-sm leading-relaxed">{selected.analysis}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
 
@@ -225,11 +386,11 @@ export default function Fitness({ logs, levels }) {
 
   return (
     <div className="space-y-4 fade-up">
-      <div className="flex gap-1.5 bg-gray-100 rounded-xl p-1">
-        {[['levels','🏋️ Levels'],['weight','⚖️ Weight'],['screen','📱 Screen'],['history','📋 History']].map(([id, label]) => (
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        {[['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['history','📋']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-              tab === id ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+            className={`flex-1 py-1.5 text-sm rounded-lg transition-all ${
+              tab === id ? 'bg-white text-indigo-600 shadow-sm font-medium' : 'text-gray-400 hover:text-gray-600'
             }`}>
             {label}
           </button>
@@ -260,6 +421,8 @@ export default function Fitness({ logs, levels }) {
           <WeightChart logs={logs} />
         </div>
       )}
+
+      {tab === 'body' && <BodyProgress />}
 
       {tab === 'screen' && <ScreenTime logs={logs} />}
 
