@@ -108,8 +108,9 @@ async function saveLog(date, update, exists) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { message, date } = req.body || {}
-  if (!message || !date) return res.status(400).json({ error: 'message and date required' })
+  const { message, date, image } = req.body || {}
+  if (!date) return res.status(400).json({ error: 'date required' })
+  if (!message && !image) return res.status(400).json({ error: 'message or image required' })
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ message: '⚠️ ANTHROPIC_API_KEY not set in Vercel environment variables.' })
@@ -121,14 +122,23 @@ export default async function handler(req, res) {
 
   let raw
   try {
+    const textContent = {
+      type: 'text',
+      text: `Existing log for ${date}:\n${JSON.stringify(existing || {}, null, 2)}\n\nUser says: "${message || 'Analyze this food image and estimate the macros, then log it.'}"`,
+    }
+
+    const messageContent = image
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } },
+          textContent,
+        ]
+      : textContent.text
+
     const claudeRes = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: image ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: `Existing log for ${date}:\n${JSON.stringify(existing || {}, null, 2)}\n\nUser says: "${message}"`,
-      }],
+      messages: [{ role: 'user', content: messageContent }],
     })
     raw = claudeRes.content[0].text.trim()
   } catch (err) {
