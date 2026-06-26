@@ -8,9 +8,11 @@ import Calories from './components/tabs/Calories'
 import Finance from './components/tabs/Finance'
 import Calendar from './components/tabs/Calendar'
 import History from './components/tabs/History'
+import Log from './components/tabs/Log'
 import clsx from 'clsx'
 
 const TABS = [
+  { id: 'log',       emoji: '💬', label: 'Log' },
   { id: 'dashboard', emoji: '🏠', label: 'Dashboard' },
   { id: 'today',     emoji: '📊', label: 'Today' },
   { id: 'fitness',   emoji: '💪', label: 'Fitness' },
@@ -33,7 +35,7 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('log')
   const { logs, loading: logsLoading } = useLogs(90)
   const { levels, loading: levelsLoading } = useExerciseLevels()
   const badges = useAchievements()
@@ -115,6 +117,7 @@ export default function App() {
 
       {/* Content */}
       <div className="max-w-3xl mx-auto px-5 py-6 pb-16">
+        {activeTab === 'log'       && <Log />}
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
         {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}
