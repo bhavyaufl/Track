@@ -36,10 +36,12 @@ function LoadingScreen() {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('log')
-  const { logs, loading: logsLoading } = useLogs(90)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const refresh = () => setRefreshKey(k => k + 1)
+  const { logs, loading: logsLoading } = useLogs(90, refreshKey)
   const { levels, loading: levelsLoading } = useExerciseLevels()
   const badges = useAchievements()
-  const { log: todayLog, loading: todayLoading } = useTodayLog()
+  const { log: todayLog, loading: todayLoading } = useTodayLog(refreshKey)
 
   if (logsLoading || levelsLoading || todayLoading) return <LoadingScreen />
 
@@ -117,7 +119,7 @@ export default function App() {
 
       {/* Content */}
       <div className="max-w-3xl mx-auto px-5 py-6 pb-16">
-        {activeTab === 'log'       && <Log />}
+        {activeTab === 'log'       && <Log onLogged={refresh} />}
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
         {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}

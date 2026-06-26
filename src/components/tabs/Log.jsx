@@ -43,7 +43,7 @@ function TypingDots() {
   )
 }
 
-export default function Log() {
+export default function Log({ onLogged }) {
   const today = new Date().toISOString().split('T')[0]
   const [messages, setMessages] = useState([{
     role: 'assistant',
@@ -73,6 +73,7 @@ export default function Log() {
       })
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', text: data.message || 'Done!' }])
+      if (!data.message?.startsWith('⚠️')) onLogged?.()
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', text: '⚠️ Network error. Check your connection and try again.' }])
     } finally {

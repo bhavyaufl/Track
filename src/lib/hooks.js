@@ -10,18 +10,19 @@ function safeQuery(fn) {
   return fn()
 }
 
-export function useLogs(limit = 90) {
+export function useLogs(limit = 90, refreshKey = 0) {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     safeQuery(() =>
       supabase.from('daily_logs').select('*').order('date', { ascending: false }).limit(limit)
     ).then(({ data }) => {
       setLogs(data || [])
       setLoading(false)
     })
-  }, [limit])
+  }, [limit, refreshKey])
 
   return { logs, loading }
 }
@@ -70,7 +71,7 @@ export function useAchievements() {
   return badges
 }
 
-export function useTodayLog() {
+export function useTodayLog(refreshKey = 0) {
   const today = new Date().toISOString().split('T')[0]
   const [log, setLog] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -82,7 +83,7 @@ export function useTodayLog() {
       setLog(data)
       setLoading(false)
     })
-  }, [today])
+  }, [today, refreshKey])
 
   return { log, loading }
 }
