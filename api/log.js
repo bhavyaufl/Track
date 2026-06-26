@@ -114,13 +114,14 @@ export default async function handler(req, res) {
 
   // Confirmed save path — skip Claude, just write the pre-approved update
   if (confirmedUpdate) {
+    const { _confirmMessage, ...cleanUpdate } = confirmedUpdate
     const existing = await fetchLog(date)
     try {
-      await saveLog(date, confirmedUpdate, !!existing)
+      await saveLog(date, cleanUpdate, !!existing)
     } catch {
       return res.status(500).json({ message: '⚠️ Failed to save to database.' })
     }
-    return res.status(200).json({ message: confirmedUpdate._confirmMessage || '✓ Logged!' })
+    return res.status(200).json({ message: _confirmMessage || '✓ Logged!' })
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {

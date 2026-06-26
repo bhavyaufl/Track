@@ -51,9 +51,9 @@ export default function App() {
   const latestWeight = logs.find(l => l.weight)?.weight
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50" style={{ minHeight: '100dvh' }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-20"
+      <div className="bg-white border-b border-gray-100 fixed top-0 left-0 right-0 z-20"
         style={{ boxShadow: '0 1px 20px rgba(0,0,0,0.06)' }}>
         <div className="max-w-3xl mx-auto px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -87,8 +87,8 @@ export default function App() {
       </div>
 
       {/* Tab bar */}
-      <div className="bg-white border-b border-gray-100 sticky top-[61px] z-10 overflow-x-auto"
-        style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+      <div className="bg-white border-b border-gray-100 fixed left-0 right-0 z-10 overflow-x-auto"
+        style={{ top: '61px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
         <div className="max-w-3xl mx-auto flex min-w-max">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -109,19 +109,16 @@ export default function App() {
         </div>
       </div>
 
-      {!isConfigured && (
-        <div className="max-w-3xl mx-auto px-5 pt-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
+      {/* Content — offset for fixed header (~61px) + tab bar (~49px) */}
+      <div className="max-w-3xl mx-auto px-5 pb-16" style={{ paddingTop: '118px' }}>
+        {!isConfigured && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
             ⚠️ Add Supabase keys to <code className="bg-amber-100 px-1 rounded">.env.local</code> then restart.
           </div>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="max-w-3xl mx-auto px-5 py-6 pb-16">
+        )}
         {activeTab === 'log'       && <Log onLogged={refresh} />}
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
-        {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} />}
+        {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} onRefresh={refresh} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}
         {activeTab === 'calories'  && <Calories todayLog={todayLog} logs={logs} />}
         {activeTab === 'finance'   && <Finance logs={logs} />}
