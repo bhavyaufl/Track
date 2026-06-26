@@ -35,8 +35,8 @@ function SevenDayChart({ logs }) {
         <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
         <YAxis stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} domain={[0, 2000]} />
         <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12 }} />
-        <ReferenceLine y={1200} stroke="#6366f1" strokeDasharray="4 2" />
-        <ReferenceLine y={1600} stroke="#6366f1" strokeDasharray="4 2" />
+        <ReferenceLine y={GOALS.calories.target} stroke="#6366f1" strokeDasharray="4 2"
+          label={{ value: '1800', fill: '#6366f1', fontSize: 10, position: 'right' }} />
         <Bar dataKey="calories" fill="#6366f1" radius={[6,6,0,0]} name="kcal" />
       </BarChart>
     </ResponsiveContainer>
@@ -46,8 +46,8 @@ function SevenDayChart({ logs }) {
 export default function Calories({ todayLog, logs }) {
   const cal = todayLog?.calories || 0
   const macros = todayLog?.macros || { p: 0, c: 0, f: 0 }
-  const inRange = cal >= GOALS.calories.min && cal <= GOALS.calories.max
-  const pct = Math.min((cal / GOALS.calories.max) * 100, 108)
+  const onTarget = cal >= GOALS.calories.target
+  const pct = Math.min((cal / GOALS.calories.target) * 100, 100)
 
   const totalDeficit = logs.reduce((sum, l) => l.calories ? sum + (GOALS.calories.target - l.calories) : sum, 0)
   const kgLost = Math.max((totalDeficit / 7700).toFixed(2), 0)
@@ -59,23 +59,21 @@ export default function Calories({ todayLog, logs }) {
         <div className="flex justify-between items-start mb-3">
           <div>
             <div className="text-gray-500 text-sm">Today's calories</div>
-            <div className={`text-4xl font-black mt-0.5 ${inRange ? 'text-emerald-600' : 'text-amber-500'}`}>{cal}</div>
+            <div className={`text-4xl font-black mt-0.5 ${onTarget ? 'text-emerald-600' : 'text-amber-500'}`}>{cal}</div>
           </div>
           <div className="text-right">
-            <div className={`text-sm font-semibold px-3 py-1 rounded-full ${inRange ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
-              {inRange ? '✓ On target' : cal > GOALS.calories.max ? '↑ Over' : '↓ Under'}
+            <div className={`text-sm font-semibold px-3 py-1 rounded-full ${onTarget ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
+              {onTarget ? '✓ On target' : '↓ Under'}
             </div>
-            <div className="text-gray-400 text-xs mt-1">target: 1200–1600</div>
+            <div className="text-gray-400 text-xs mt-1">target: 1800 kcal</div>
           </div>
         </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden relative">
+        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: inRange ? '#10b981' : '#f59e0b' }} />
-          <div className="absolute top-0 h-full w-0.5 bg-indigo-300 opacity-70"
-            style={{ left: `${(1200/2000)*100}%` }} />
+            style={{ width: `${pct}%`, background: onTarget ? '#10b981' : '#6366f1' }} />
         </div>
         <div className="flex justify-between text-xs text-gray-400 mt-1">
-          <span>0</span><span className="text-indigo-400">1200</span><span>1600</span>
+          <span>0</span><span className="text-indigo-400">1800 kcal target</span>
         </div>
       </div>
 

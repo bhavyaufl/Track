@@ -99,8 +99,8 @@ Calories = 4×P + 4×C + 9×F. Estimate unlisted foods from nutritional knowledg
 | Action | XP |
 |---|---|
 | Logged the day | +10 |
-| Protein ≥ 130g | +20 |
-| Calories 1200–1600 | +15 |
+| Protein ≥ 160g | +20 |
+| Calories 1600–2000 | +15 |
 | Steps ≥ 10,000 | +15 |
 | Gym session | +25 |
 | Cardio session | +15 |
@@ -112,8 +112,8 @@ Calories = 4×P + 4×C + 9×F. Estimate unlisted foods from nutritional knowledg
 
 | Goal | Points |
 |---|---|
-| Protein ≥ 130g | 25 |
-| Calories 1200–1600 | 20 |
+| Protein ≥ 160g | 25 |
+| Calories 1600–2000 | 20 |
 | Steps ≥ 10,000 | 20 |
 | Gym or cardio | 25 |
 | Logged | 10 |

@@ -99,8 +99,8 @@ function GoalList({ log }) {
   const steps = log?.steps || 0
   const goals = [
     { label: 'Logged',                                        sub: '',                              hit: !!log,                                         pts: 10 },
-    { label: `Protein ≥ 130g`,                               sub: `${macros.p}g logged`,           hit: macros.p >= 130,                               pts: 25 },
-    { label: `Calories 1200–1600`,                           sub: `${cal} kcal logged`,            hit: cal >= 1200 && cal <= 1600,                    pts: 20 },
+    { label: `Protein ≥ 160g`,                               sub: `${macros.p}g logged`,           hit: macros.p >= GOALS.protein,                     pts: 25 },
+    { label: `Calories ≥ 1800`,                               sub: `${cal} kcal logged`,            hit: cal >= GOALS.calories.target,                  pts: 20 },
     { label: `Steps ≥ 10,000`,                               sub: steps.toLocaleString(),          hit: steps >= 10000,                                pts: 20 },
     { label: 'Gym or Cardio',                                sub: log?.muscles?.join(', ') || '',  hit: !!(log?.exercises?.length || log?.cardio_type), pts: 25 },
   ]

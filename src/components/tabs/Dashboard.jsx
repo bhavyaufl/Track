@@ -109,8 +109,8 @@ function TodaySnapshot({ todayLog }) {
 
   const goals = [
     { label: 'Logged',   hit: !!todayLog },
-    { label: 'Protein',  hit: macros.p >= 130 },
-    { label: 'Calories', hit: cal >= 1200 && cal <= 1600 },
+    { label: 'Protein',  hit: macros.p >= GOALS.protein },
+    { label: 'Calories', hit: cal >= GOALS.calories.target },
     { label: 'Steps',    hit: steps >= 10000 },
     { label: 'Workout',  hit: !!(todayLog?.exercises?.length || todayLog?.cardio_type) },
   ]
@@ -159,8 +159,8 @@ function TodaySnapshot({ todayLog }) {
       {/* quick stats */}
       <div className="grid grid-cols-3 gap-2 mt-3">
         {[
-          { label: 'Calories', val: cal || '—', target: '1500', unit: 'kcal', ok: cal >= 1200 && cal <= 1600 },
-          { label: 'Protein',  val: macros.p || '—', target: '130', unit: 'g', ok: macros.p >= 130 },
+          { label: 'Calories', val: cal || '—', target: String(GOALS.calories.target), unit: 'kcal', ok: cal >= GOALS.calories.target },
+          { label: 'Protein',  val: macros.p || '—', target: String(GOALS.protein), unit: 'g', ok: macros.p >= GOALS.protein },
           { label: 'Steps',    val: steps ? (steps/1000).toFixed(1)+'k' : '—', target: '10k', unit: '', ok: steps >= 10000 },
         ].map(s => (
           <div key={s.label} className={`rounded-xl p-2.5 text-center ${s.ok ? 'bg-emerald-50' : 'bg-gray-50'}`}>
@@ -199,10 +199,10 @@ function CalorieTrend({ logs }) {
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 2200]} width={35} />
+          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 2400]} width={35} />
           <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }} />
-          <ReferenceLine y={1200} stroke="#a5b4fc" strokeDasharray="4 2" />
-          <ReferenceLine y={1600} stroke="#a5b4fc" strokeDasharray="4 2" />
+          <ReferenceLine y={GOALS.calories.target} stroke="#a5b4fc" strokeDasharray="4 2"
+            label={{ value: '1800', fill: '#818cf8', fontSize: 9, position: 'right' }} />
           <Area type="monotone" dataKey="cal" stroke="#6366f1" strokeWidth={2.5}
             fill="url(#calGrad)" dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} name="kcal" />
         </AreaChart>

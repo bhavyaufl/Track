@@ -1,7 +1,7 @@
 export const GOALS = {
-  calories: { min: 1200, max: 1600, target: 1500 },
-  protein: 130,
-  carbs: 130,
+  calories: { target: 1800 },
+  protein: 160,
+  carbs: 180,
   fat: 50,
   steps: 10000,
   weightTarget: 85,
