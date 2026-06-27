@@ -1,4 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+function useClock() {
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return now
+}
 import { useLogs, useExerciseLevels, useAchievements, useTodayLog } from './lib/hooks'
 import { isConfigured } from './lib/supabase'
 import Dashboard from './components/tabs/Dashboard'
@@ -35,6 +44,10 @@ function LoadingScreen() {
 }
 
 export default function App() {
+  const now = useClock()
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+
   const [activeTab, setActiveTab] = useState('log')
   const [refreshKey, setRefreshKey] = useState(0)
   const refresh = () => setRefreshKey(k => k + 1)
@@ -61,7 +74,13 @@ export default function App() {
               style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>B</div>
             <div>
               <div className="text-gray-900 font-bold text-sm leading-tight">Bhavya's Tracker</div>
-              <div className="text-gray-400 text-xs">{daysLeft} days to Aug 9</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-gray-600 text-xs font-medium">{dateStr}</span>
+                <span className="text-gray-300 text-xs">·</span>
+                <span className="text-indigo-500 text-xs font-semibold tabular-nums">{timeStr}</span>
+                <span className="text-gray-300 text-xs">·</span>
+                <span className="text-gray-400 text-xs">{daysLeft}d left</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
