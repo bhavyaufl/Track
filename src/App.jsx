@@ -53,9 +53,9 @@ export default function App() {
   return (
     <div className="bg-gray-50" style={{ minHeight: '100dvh' }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 fixed top-0 left-0 right-0 z-20"
-        style={{ boxShadow: '0 1px 20px rgba(0,0,0,0.06)' }}>
-        <div className="max-w-3xl mx-auto px-5 py-3.5 flex items-center justify-between">
+      <div className="bg-white fixed top-0 left-0 right-0 z-20"
+        style={{ boxShadow: '0 2px 0 #e2e8f0' }}>
+        <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-white text-base font-black shadow-md shadow-indigo-200"
               style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>B</div>
@@ -87,8 +87,8 @@ export default function App() {
       </div>
 
       {/* Tab bar */}
-      <div className="bg-white border-b border-gray-100 fixed left-0 right-0 z-10 overflow-x-auto"
-        style={{ top: '61px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+      <div className="bg-white fixed left-0 right-0 z-10 overflow-x-auto"
+        style={{ top: '65px', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
         <div className="max-w-3xl mx-auto flex min-w-max">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -110,7 +110,7 @@ export default function App() {
       </div>
 
       {/* Content — offset for fixed header (~61px) + tab bar (~49px) */}
-      <div className="max-w-3xl mx-auto px-5 pb-16" style={{ paddingTop: '118px' }}>
+      <div className="max-w-3xl mx-auto px-5 pb-16" style={{ paddingTop: '122px' }}>
         {!isConfigured && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
             ⚠️ Add Supabase keys to <code className="bg-amber-100 px-1 rounded">.env.local</code> then restart.
