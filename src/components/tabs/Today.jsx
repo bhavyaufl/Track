@@ -3,7 +3,7 @@ import { GOALS } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
 
 function RemainCard({ label, remaining, consumed, total, unit, icon, color, bgColor, borderColor }) {
-  const pct = Math.min((consumed / total) * 100, 100)
+  const pct  = Math.min((consumed / total) * 100, 100)
   const done = consumed >= total
   const over = consumed > total
 
@@ -11,18 +11,32 @@ function RemainCard({ label, remaining, consumed, total, unit, icon, color, bgCo
     <div className={`rounded-2xl p-3 border ${borderColor} ${bgColor}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="text-gray-500 text-xs font-medium uppercase tracking-wide">{label}</div>
-        <div className="text-lg">{icon}</div>
+        <div className="text-base">{icon}</div>
       </div>
-      <div className={`text-2xl font-black ${done ? 'text-emerald-600' : over ? 'text-red-500' : 'text-gray-800'}`}>
-        {over ? <span className="text-red-500">+{Math.abs(remaining)}</span> : remaining}
-        <span className="text-sm font-medium text-gray-400 ml-1">{unit}</span>
+
+      {/* Done */}
+      <div className="flex items-baseline gap-1 leading-none">
+        <span className={`text-xl font-black ${done ? 'text-emerald-600' : 'text-gray-800'}`}>{consumed}</span>
+        <span className="text-xs text-gray-400">{unit}</span>
       </div>
-      <div className="text-gray-400 text-xs mt-0.5 mb-2">
-        {done ? '✓ Goal hit!' : over ? 'over limit' : `${consumed} / ${total} ${unit} used`}
-      </div>
-      <div className="h-2 bg-white/70 rounded-full overflow-hidden">
+      <div className="text-gray-400 text-xs mt-0.5">done</div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-white/70 rounded-full overflow-hidden my-2">
         <div className="h-full rounded-full transition-all duration-700"
           style={{ width: `${Math.min(pct, 100)}%`, background: over ? '#ef4444' : done ? '#10b981' : color }} />
+      </div>
+
+      {/* Left */}
+      <div className="flex items-baseline gap-1 leading-none">
+        {over
+          ? <span className="text-base font-black text-red-500">+{Math.abs(remaining)}</span>
+          : <span className={`text-base font-black ${done ? 'text-emerald-600' : 'text-gray-700'}`}>{remaining}</span>
+        }
+        <span className="text-xs text-gray-400">{unit}</span>
+      </div>
+      <div className="text-gray-400 text-xs mt-0.5">
+        {done ? '✓ hit!' : over ? 'over' : 'left'}
       </div>
     </div>
   )

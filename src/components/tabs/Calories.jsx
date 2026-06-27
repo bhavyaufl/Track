@@ -11,9 +11,11 @@ const MEAL_LIST = [
 ]
 
 function MacroBar({ label, value, target, color, emoji }) {
-  const pct = Math.min((value / target) * 100, 100)
+  const pct       = Math.min((value / target) * 100, 100)
   const remaining = Math.max(target - value, 0)
-  const over = value > target
+  const over      = value > target
+  const done      = value >= target
+
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between items-center">
@@ -21,18 +23,24 @@ function MacroBar({ label, value, target, color, emoji }) {
           <span className="text-sm">{emoji}</span>
           <span className="text-sm font-medium text-gray-700">{label}</span>
         </div>
-        <div className="text-right">
-          <span className="text-sm font-bold text-gray-800">{value}</span>
-          <span className="text-gray-400 text-xs"> / {target}g</span>
-          {remaining > 0
-            ? <span className="text-xs text-gray-400 ml-2">{remaining}g left</span>
-            : <span className="text-xs text-emerald-500 ml-2">✓ done</span>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-gray-500"><span className="font-bold text-gray-800">{value}g</span> done</span>
+          <span className="text-gray-300">·</span>
+          {done
+            ? <span className="text-emerald-500 font-semibold">✓ goal hit</span>
+            : over
+            ? <span className="text-red-400 font-semibold">+{value - target}g over</span>
+            : <span className="text-gray-400"><span className="font-semibold text-gray-600">{remaining}g</span> left</span>
           }
         </div>
       </div>
       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: over ? '#10b981' : color }} />
+          style={{ width: `${pct}%`, background: done ? '#10b981' : color }} />
+      </div>
+      <div className="flex justify-between text-xs text-gray-300">
+        <span>0</span>
+        <span>{target}g</span>
       </div>
     </div>
   )
