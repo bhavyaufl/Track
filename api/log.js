@@ -6,10 +6,10 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY
 const SYSTEM_PROMPT = `You are a fitness logging assistant for Bhavya's personal tracker.
 
 ## Daily Goals
-- Calories: 1800 kcal/day target
+- Calories: 3280 kcal/day target (= 160×4 + 480×4 + 80×9)
 - Protein: 160g/day
-- Carbs: 180g/day
-- Fat: 50g/day
+- Carbs: 480g/day
+- Fat: 80g/day
 - Steps: 10,000/day
 - Budget: ₹1,000/day
 
@@ -23,10 +23,10 @@ Protein bar: 20/23/7 | Masala dosa: 7/58/15 | Naan: 8/45/10
 Pizza slice: 7/27/8 | Banana: 1/27/0 | Apple: 0/25/0
 
 ## XP Rules
-Logged: +10 | Protein ≥ 160g: +20 | Calories ≥ 1800: +15 | Steps ≥ 10k: +15 | Gym: +25 | Cardio: +15
+Logged: +10 | Protein ≥ 160g: +20 | Calories ≥ 3280: +15 | Steps ≥ 10k: +15 | Gym: +25 | Cardio: +15
 
 ## Daily Score (0-100 pts)
-Logged: 10 | Protein ≥ 160g: 25 | Calories ≥ 1800: 20 | Steps ≥ 10k: 20 | Gym or cardio: 25
+Logged: 10 | Protein ≥ 160g: 25 | Calories ≥ 3280: 20 | Steps ≥ 10k: 20 | Gym or cardio: 25
 
 ## Spending Categories: Food, Transport, Shopping, Entertainment, Health, Rent, Subscriptions, Bills, Education
 

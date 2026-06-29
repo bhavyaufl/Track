@@ -53,10 +53,10 @@ function SevenDayChart({ logs }) {
       <BarChart data={data} barSize={22}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
         <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-        <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 4000]} width={32} />
+        <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 5000]} width={36} />
         <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }} />
         <ReferenceLine y={GOALS.calories.target} stroke="#a5b4fc" strokeDasharray="4 2"
-          label={{ value: '1800', fill: '#818cf8', fontSize: 9, position: 'right' }} />
+          label={{ value: '3280', fill: '#818cf8', fontSize: 9, position: 'right' }} />
         <Bar dataKey="calories" fill="#6366f1" radius={[5,5,0,0]} name="kcal" />
       </BarChart>
     </ResponsiveContainer>
