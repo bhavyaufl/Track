@@ -2,141 +2,128 @@ import { useState } from 'react'
 import { GOALS } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
 
-function RemainCard({ label, remaining, consumed, total, unit, icon, color, bgColor, borderColor }) {
-  const pct  = Math.min((consumed / total) * 100, 100)
-  const done = consumed >= total
-  const over = consumed > total
+function ScoreStrip({ log, onEdit }) {
+  const score = log?.daily_score || 0
+  const xp    = log?.xp_earned  || 0
+  const color = score >= 80 ? '#10b981' : score >= 50 ? '#6366f1' : score > 0 ? '#f59e0b' : '#cbd5e1'
+  const r = 17, circ = 2 * Math.PI * r
 
   return (
-    <div className={`rounded-2xl p-3 border ${borderColor} ${bgColor}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-gray-500 text-xs font-medium uppercase tracking-wide">{label}</div>
-        <div className="text-base">{icon}</div>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 px-3 py-2">
+      <div className="relative flex items-center justify-center shrink-0">
+        <svg width={42} height={42} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={21} cy={21} r={r} fill="none" stroke="#f1f5f9" strokeWidth={4.5} />
+          <circle cx={21} cy={21} r={r} fill="none" stroke={color} strokeWidth={4.5}
+            strokeDasharray={circ} strokeDashoffset={circ * (1 - score / 100)} strokeLinecap="round" />
+        </svg>
+        <div className="absolute text-xs font-black" style={{ color }}>{score}</div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-semibold text-gray-700">{score}/100 daily score</div>
+        <div className="text-gray-400 text-xs">{log ? `+${xp} XP earned` : 'Nothing logged yet'}</div>
+      </div>
+      {log && (
+        <button onClick={onEdit}
+          className="shrink-0 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-xl px-2.5 py-1.5 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors">
+          ✏️ Edit
+        </button>
+      )}
+    </div>
+  )
+}
+
+function RemainCard({ label, remaining, consumed, total, unit, icon, color, bgClass }) {
+  const pct   = Math.min((consumed / total) * 100, 100)
+  const done  = consumed >= total
+  const over  = consumed > total
+  const bar   = over ? '#ef4444' : done ? '#10b981' : color
+
+  return (
+    <div className={`rounded-xl p-2.5 border ${bgClass} shadow-sm`} style={{ borderColor: color + '33' }}>
+      <div className="flex items-center gap-1 mb-1.5">
+        <span className="text-sm leading-none">{icon}</span>
+        <span className="text-gray-500 text-xs font-semibold truncate">{label}</span>
       </div>
 
-      {/* Done */}
-      <div className="flex items-baseline gap-1 leading-none">
-        <span className={`text-xl font-black ${done ? 'text-emerald-600' : 'text-gray-800'}`}>{consumed}</span>
-        <span className="text-xs text-gray-400">{unit}</span>
+      <div className="flex items-baseline gap-0.5 leading-none mb-0.5">
+        <span className={`text-lg font-black ${done ? 'text-emerald-600' : 'text-gray-800'}`}>{consumed}</span>
+        <span className="text-gray-400 text-xs">/{total}{unit}</span>
       </div>
-      <div className="text-gray-400 text-xs mt-0.5">done</div>
 
-      {/* Progress bar */}
-      <div className="h-1.5 bg-white/70 rounded-full overflow-hidden my-2">
+      <div className="h-1.5 rounded-full overflow-hidden my-1.5" style={{ background: 'rgba(255,255,255,0.7)' }}>
         <div className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.min(pct, 100)}%`, background: over ? '#ef4444' : done ? '#10b981' : color }} />
+          style={{ width: `${Math.min(pct, 100)}%`, background: bar }} />
       </div>
 
-      {/* Left */}
-      <div className="flex items-baseline gap-1 leading-none">
+      <div className={`text-xs font-bold leading-none ${over ? 'text-red-500' : done ? 'text-emerald-600' : 'text-gray-500'}`}>
         {over
-          ? <span className="text-base font-black text-red-500">+{Math.abs(remaining)}</span>
-          : <span className={`text-base font-black ${done ? 'text-emerald-600' : 'text-gray-700'}`}>{remaining}</span>
-        }
-        <span className="text-xs text-gray-400">{unit}</span>
-      </div>
-      <div className="text-gray-400 text-xs mt-0.5">
-        {done ? '✓ hit!' : over ? 'over' : 'left'}
+          ? `+${Math.abs(remaining)}${unit} over`
+          : done
+          ? '✓ goal hit!'
+          : `${remaining}${unit} left`}
       </div>
     </div>
   )
 }
 
-function StepsRing({ steps }) {
+function StepsBar({ steps }) {
   const goal = GOALS.steps
-  const pct = Math.min(steps / goal, 1)
-  const size = 64, stroke = 7, r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ * (1 - pct)
+  const pct  = Math.min(steps / goal, 1)
   const done = steps >= goal
 
   return (
-    <div className={`bg-white rounded-2xl p-3 border flex items-center gap-3 ${done ? 'border-emerald-100' : 'border-gray-100'} shadow-sm`}>
-      <div className="relative flex items-center justify-center shrink-0">
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
-          <circle cx={size/2} cy={size/2} r={r} fill="none"
-            stroke={done ? '#10b981' : '#6366f1'} strokeWidth={stroke}
-            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
-        </svg>
-        <div className="absolute text-base">👣</div>
-      </div>
-      <div className="flex-1">
-        <div className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-0.5">Steps</div>
-        <div className={`text-xl font-black ${done ? 'text-emerald-600' : 'text-gray-800'}`}>
-          {steps.toLocaleString()}
+    <div className={`bg-white rounded-xl px-3 py-2.5 border shadow-sm flex items-center gap-3 ${done ? 'border-emerald-100' : 'border-gray-100'}`}>
+      <span className="text-lg shrink-0">👣</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-center mb-1">
+          <span className={`text-sm font-bold ${done ? 'text-emerald-600' : 'text-gray-800'}`}>
+            {steps.toLocaleString()}
+            <span className="text-xs text-gray-400 font-normal"> / {goal.toLocaleString()}</span>
+          </span>
+          <span className={`text-xs font-bold ${done ? 'text-emerald-500' : 'text-indigo-500'}`}>
+            {Math.round(pct * 100)}%
+          </span>
         </div>
-        <div className="text-gray-400 text-xs">
-          {done ? '✓ 10,000 hit!' : `${(goal - steps).toLocaleString()} to go`}
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${pct * 100}%`, background: done ? '#10b981' : '#6366f1' }} />
         </div>
       </div>
-      <div className={`text-xl font-bold ${done ? 'text-emerald-600' : 'text-indigo-600'}`}>
-        {Math.round(pct * 100)}%
-      </div>
-    </div>
-  )
-}
-
-function ScoreCard({ log }) {
-  const score = log?.daily_score || 0
-  const xp = log?.xp_earned || 0
-  const color = score >= 80 ? '#10b981' : score >= 50 ? '#6366f1' : score > 0 ? '#f59e0b' : '#e2e8f0'
-  const size = 56, stroke = 6, r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ * (1 - score / 100)
-
-  return (
-    <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm flex items-center gap-3">
-      <div className="relative flex items-center justify-center shrink-0">
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
-        </svg>
-        <div className="absolute text-sm font-black text-gray-800">{score}</div>
-      </div>
-      <div>
-        <div className="text-gray-500 text-xs uppercase tracking-wide">Daily Score</div>
-        <div className="text-gray-700 text-sm font-semibold mt-0.5">{score}/100</div>
-        {!log && <div className="text-gray-400 text-xs mt-0.5">Log to earn points</div>}
-      </div>
-      <div className="ml-auto text-right">
-        <div className="text-indigo-600 font-black text-lg">+{xp}</div>
-        <div className="text-gray-400 text-xs">XP</div>
-      </div>
+      {done && <span className="text-emerald-500 text-xs font-bold shrink-0">✓</span>}
     </div>
   )
 }
 
 function GoalList({ log }) {
   const macros = log?.macros || { p: 0, c: 0, f: 0 }
-  const cal = log?.calories || 0
-  const steps = log?.steps || 0
-  const goals = [
-    { label: 'Logged',          sub: '',                              hit: !!log,                                         pts: 10 },
-    { label: 'Protein ≥ 160g', sub: `${macros.p}g logged`,           hit: macros.p >= GOALS.protein,                     pts: 25 },
-    { label: 'Calories ≥ 3280', sub: `${cal} kcal logged`,           hit: cal >= GOALS.calories.target,                  pts: 20 },
-    { label: 'Steps ≥ 10,000', sub: steps.toLocaleString(),          hit: steps >= 10000,                                pts: 20 },
-    { label: 'Gym or Cardio',  sub: log?.muscles?.join(', ') || '',  hit: !!(log?.exercises?.length || log?.cardio_type), pts: 25 },
+  const cal    = log?.calories || 0
+  const steps  = log?.steps   || 0
+  const goals  = [
+    { label: 'Logged',           sub: '',                                   hit: !!log,                                          pts: 10 },
+    { label: 'Protein ≥ 160g',  sub: `${macros.p}g`,                       hit: macros.p >= GOALS.protein,                      pts: 25 },
+    { label: 'Calories ≥ 3280', sub: `${cal}kcal`,                         hit: cal >= GOALS.calories.target,                   pts: 20 },
+    { label: 'Steps ≥ 10k',     sub: steps.toLocaleString(),               hit: steps >= 10000,                                 pts: 20 },
+    { label: 'Gym or Cardio',   sub: log?.muscles?.slice(0, 2).join(', ') || '', hit: !!(log?.exercises?.length || log?.cardio_type), pts: 25 },
   ]
+  const hitCount = goals.filter(g => g.hit).length
 
   return (
-    <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-      <h3 className="text-gray-700 font-semibold mb-2 text-sm">Goals</h3>
-      <div className="space-y-1.5">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-50">
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Goals</span>
+        <span className="text-xs font-bold text-indigo-500">{hitCount}/{goals.length} hit</span>
+      </div>
+      <div className="divide-y divide-gray-50">
         {goals.map(g => (
-          <div key={g.label}
-            className={`flex items-center justify-between rounded-xl px-3 py-2 ${g.hit ? 'bg-emerald-50' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-2">
-              <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${g.hit ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
-                {g.hit ? '✓' : '○'}
-              </div>
-              <div>
-                <span className={`text-xs font-medium ${g.hit ? 'text-gray-700' : 'text-gray-400'}`}>{g.label}</span>
-                {g.sub && <span className="text-gray-400 text-xs ml-1.5">{g.sub}</span>}
-              </div>
+          <div key={g.label} className={`flex items-center px-3 py-1.5 ${g.hit ? 'bg-emerald-50/40' : ''}`}>
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mr-2 ${
+              g.hit ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-300'
+            }`}>
+              {g.hit ? '✓' : ''}
             </div>
-            <span className={`text-xs font-semibold shrink-0 ${g.hit ? 'text-emerald-600' : 'text-gray-300'}`}>+{g.pts}</span>
+            <span className={`text-xs flex-1 ${g.hit ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>{g.label}</span>
+            {g.sub && <span className="text-gray-400 text-xs mx-2">{g.sub}</span>}
+            <span className={`text-xs font-bold shrink-0 ${g.hit ? 'text-emerald-600' : 'text-gray-200'}`}>+{g.pts}</span>
           </div>
         ))}
       </div>
@@ -147,30 +134,34 @@ function GoalList({ log }) {
 function Meals({ log }) {
   const items = [
     { label: 'Breakfast', icon: '🌅', key: 'breakfast' },
-    { label: 'Lunch',     icon: '☀️', key: 'lunch' },
-    { label: 'Dinner',    icon: '🌙', key: 'dinner' },
-    { label: 'Snacks',    icon: '🍿', key: 'snacks' },
+    { label: 'Lunch',     icon: '☀️', key: 'lunch'      },
+    { label: 'Dinner',    icon: '🌙', key: 'dinner'     },
+    { label: 'Snacks',    icon: '🍿', key: 'snacks'     },
   ].filter(m => log?.[m.key])
   if (!items.length) return null
 
   return (
-    <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-      <h3 className="text-gray-700 font-semibold mb-2 text-sm">Meals</h3>
-      <div className="space-y-2">
-        {items.map(m => (
-          <div key={m.key} className="flex gap-2.5">
-            <span className="text-base shrink-0">{m.icon}</span>
-            <div>
-              <div className="text-xs text-gray-400 font-medium">{m.label}</div>
-              <div className="text-gray-600 text-xs">{log[m.key]}</div>
-              {log.meal_macros?.[m.key] && (() => {
-                const mx = log.meal_macros[m.key]
-                const c = mx.p * 4 + mx.c * 4 + mx.f * 9
-                return <div className="text-gray-400 text-xs mt-0.5">{c} kcal · P{mx.p} C{mx.c} F{mx.f}</div>
-              })()}
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-3 py-1.5 border-b border-gray-50">
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Meals</span>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {items.map(m => {
+          const mx   = log.meal_macros?.[m.key]
+          const kcal = mx ? mx.p * 4 + mx.c * 4 + mx.f * 9 : null
+          return (
+            <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
+              <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs font-medium text-gray-500">{m.label}</span>
+                  {kcal && <span className="text-xs text-gray-400 shrink-0">{kcal}kcal</span>}
+                </div>
+                <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -179,23 +170,24 @@ function Meals({ log }) {
 function SpendingView({ log }) {
   if (!log?.spending?.length) return null
   const total = log.spending.reduce((s, e) => s + e.amount, 0)
-  const over = total > GOALS.dailyBudget
+  const over  = total > GOALS.dailyBudget
+
   return (
-    <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-gray-700 font-semibold text-sm">Spending</h3>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-50">
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Spending</span>
         <span className={`text-xs font-bold ${over ? 'text-red-500' : 'text-gray-600'}`}>
-          ₹{total.toLocaleString()} / ₹{GOALS.dailyBudget}
+          ₹{total.toLocaleString()} / ₹{GOALS.dailyBudget.toLocaleString()}
         </span>
       </div>
-      <div className="space-y-1.5">
+      <div className="divide-y divide-gray-50">
         {log.spending.map((s, i) => (
-          <div key={i} className="flex justify-between items-center text-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="text-gray-600">{s.item}</span>
-              <span className="text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.category}</span>
+          <div key={i} className="flex items-center justify-between px-3 py-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs text-gray-600 truncate">{s.item}</span>
+              <span className="text-gray-400 bg-gray-50 text-xs px-1.5 py-0.5 rounded shrink-0">{s.category}</span>
             </div>
-            <span className="text-gray-700 font-medium">₹{s.amount}</span>
+            <span className="text-xs font-semibold text-gray-700 ml-2">₹{s.amount}</span>
           </div>
         ))}
       </div>
@@ -203,7 +195,7 @@ function SpendingView({ log }) {
   )
 }
 
-// ─── Edit Modal ────────────────────────────────────────────────────────────────
+// ─── Edit Modal ──────────────────────────────────────────────────────────────
 
 function Field({ label, value, onChange, type = 'text', placeholder = '' }) {
   return (
@@ -217,12 +209,7 @@ function Field({ label, value, onChange, type = 'text', placeholder = '' }) {
 }
 
 function EditLogModal({ log, onClose, onSaved }) {
-  const [meals, setMeals] = useState({
-    breakfast: log?.breakfast || '',
-    lunch:     log?.lunch     || '',
-    dinner:    log?.dinner    || '',
-    snacks:    log?.snacks    || '',
-  })
+  const [meals,      setMeals]      = useState({ breakfast: log?.breakfast||'', lunch: log?.lunch||'', dinner: log?.dinner||'', snacks: log?.snacks||'' })
   const [calories,   setCalories]   = useState(log?.calories || 0)
   const [macros,     setMacros]     = useState(log?.macros   || { p: 0, c: 0, f: 0 })
   const [steps,      setSteps]      = useState(log?.steps    || 0)
@@ -233,9 +220,7 @@ function EditLogModal({ log, onClose, onSaved }) {
   const [saving,     setSaving]     = useState(false)
 
   function setMacro(k, v) { setMacros(m => ({ ...m, [k]: Number(v) || 0 })) }
-
   function removeSpend(i)  { setSpending(prev => prev.filter((_, j) => j !== i)) }
-
   function addSpend() {
     if (!newItem.item || !newItem.amount) return
     setSpending(prev => [...prev, { ...newItem, amount: Number(newItem.amount) }])
@@ -249,7 +234,7 @@ function EditLogModal({ log, onClose, onSaved }) {
       lunch:       meals.lunch     || null,
       dinner:      meals.dinner    || null,
       snacks:      meals.snacks    || null,
-      calories:    Number(calories) || 0,
+      calories:    Number(calories)   || 0,
       macros,
       steps:       Number(steps)      || 0,
       weight:      weight ? Number(weight) : null,
@@ -261,14 +246,12 @@ function EditLogModal({ log, onClose, onSaved }) {
     onClose()
   }
 
-  const CATEGORIES = ['Food','Transport','Shopping','Entertainment','Health','Rent','Subscriptions','Bills','Education']
-  const MEAL_KEYS  = [['breakfast','🌅 Breakfast'],['lunch','☀️ Lunch'],['dinner','🌙 Dinner'],['snacks','🍿 Snacks']]
+  const CATS     = ['Food','Transport','Shopping','Entertainment','Health','Rent','Subscriptions','Bills','Education']
+  const MEAL_KEYS = [['breakfast','🌅 Breakfast'],['lunch','☀️ Lunch'],['dinner','🌙 Dinner'],['snacks','🍿 Snacks']]
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" onClick={onClose}>
       <div className="bg-white rounded-t-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h3 className="font-bold text-gray-800">Edit Log</h3>
@@ -283,10 +266,7 @@ function EditLogModal({ log, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* Body */}
-        <div className="overflow-y-auto px-5 py-4 space-y-6 pb-8">
-
-          {/* Meals */}
+        <div className="overflow-y-auto px-5 py-4 space-y-6 pb-10">
           <section>
             <h4 className="text-gray-700 font-semibold text-sm mb-3">Meals</h4>
             <div className="space-y-2">
@@ -305,25 +285,19 @@ function EditLogModal({ log, onClose, onSaved }) {
             </div>
           </section>
 
-          {/* Macros & Calories */}
           <section>
             <h4 className="text-gray-700 font-semibold text-sm mb-3">Macros & Calories</h4>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Calories (kcal)" type="number" value={calories} onChange={setCalories} />
-              <Field label="Protein (g)"     type="number" value={macros.p} onChange={v => setMacro('p', v)} />
-              <Field label="Carbs (g)"       type="number" value={macros.c} onChange={v => setMacro('c', v)} />
-              <Field label="Fat (g)"         type="number" value={macros.f} onChange={v => setMacro('f', v)} />
+              <Field label="Calories (kcal)" type="number" value={calories}  onChange={setCalories} />
+              <Field label="Protein (g)"     type="number" value={macros.p}  onChange={v => setMacro('p', v)} />
+              <Field label="Carbs (g)"       type="number" value={macros.c}  onChange={v => setMacro('c', v)} />
+              <Field label="Fat (g)"         type="number" value={macros.f}  onChange={v => setMacro('f', v)} />
             </div>
           </section>
 
-          {/* Spending */}
           <section>
             <h4 className="text-gray-700 font-semibold text-sm mb-3">Spending</h4>
-
-            {spending.length === 0 && (
-              <div className="text-gray-400 text-xs mb-3">No spending logged.</div>
-            )}
-
+            {spending.length === 0 && <div className="text-gray-400 text-xs mb-3">No spending logged.</div>}
             <div className="space-y-2 mb-3">
               {spending.map((s, i) => (
                 <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
@@ -335,8 +309,6 @@ function EditLogModal({ log, onClose, onSaved }) {
                 </div>
               ))}
             </div>
-
-            {/* Add spending item */}
             <div className="bg-gray-50 rounded-xl p-3 space-y-2">
               <div className="text-gray-500 text-xs font-medium">Add item</div>
               <input value={newItem.item} onChange={e => setNewItem(n => ({ ...n, item: e.target.value }))}
@@ -345,7 +317,7 @@ function EditLogModal({ log, onClose, onSaved }) {
               <div className="flex gap-2">
                 <select value={newItem.category} onChange={e => setNewItem(n => ({ ...n, category: e.target.value }))}
                   className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-indigo-400">
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  {CATS.map(c => <option key={c}>{c}</option>)}
                 </select>
                 <input type="number" value={newItem.amount} onChange={e => setNewItem(n => ({ ...n, amount: e.target.value }))}
                   placeholder="₹"
@@ -356,23 +328,21 @@ function EditLogModal({ log, onClose, onSaved }) {
             </div>
           </section>
 
-          {/* Steps / Weight / Screen */}
           <section>
             <h4 className="text-gray-700 font-semibold text-sm mb-3">Activity</h4>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Steps"       type="number" value={steps}      onChange={setSteps} />
-              <Field label="Weight (kg)" type="number" value={weight}     onChange={setWeight} />
+              <Field label="Steps"        type="number" value={steps}      onChange={setSteps} />
+              <Field label="Weight (kg)"  type="number" value={weight}     onChange={setWeight} />
               <Field label="Screen (min)" type="number" value={screenTime} onChange={setScreenTime} />
             </div>
           </section>
-
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Day View ──────────────────────────────────────────────────────────────────
+// ─── Day View ────────────────────────────────────────────────────────────────
 
 function DayView({ log, onRefresh }) {
   const [editing, setEditing] = useState(false)
@@ -381,43 +351,30 @@ function DayView({ log, onRefresh }) {
   const steps  = log?.steps   || 0
   const spent  = (log?.spending || []).reduce((s, e) => s + e.amount, 0)
 
-  const calRemaining    = Math.max(GOALS.calories.target - cal, 0)
-  const proteinRemaining = Math.max(GOALS.protein - macros.p, 0)
-  const budgetRemaining  = Math.max(GOALS.dailyBudget - spent, 0)
-
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <ScoreCard log={log} />
-      </div>
-
-      {log && (
-        <button onClick={() => setEditing(true)}
-          className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-500 text-sm font-medium py-2.5 rounded-2xl hover:border-indigo-300 hover:text-indigo-600 transition-colors shadow-sm">
-          ✏️ Edit this log
-        </button>
-      )}
+    <div className="space-y-2">
+      <ScoreStrip log={log} onEdit={() => setEditing(true)} />
 
       <div className="grid grid-cols-3 gap-2">
-        <RemainCard label="Calories" remaining={calRemaining} consumed={cal} total={GOALS.calories.target}
-          unit="kcal" icon="🔥" color="#6366f1" bgColor="bg-indigo-50" borderColor="border-indigo-100" />
-        <RemainCard label="Protein" remaining={proteinRemaining} consumed={macros.p} total={GOALS.protein}
-          unit="g" icon="💪" color="#8b5cf6" bgColor="bg-purple-50" borderColor="border-purple-100" />
-        <RemainCard label="Budget" remaining={budgetRemaining} consumed={spent} total={GOALS.dailyBudget}
-          unit="₹" icon="💰" color="#f59e0b" bgColor="bg-amber-50" borderColor="border-amber-100" />
+        <RemainCard label="Calories" remaining={GOALS.calories.target - cal} consumed={cal}   total={GOALS.calories.target}
+          unit="kcal" icon="🔥" color="#6366f1" bgClass="bg-indigo-50" />
+        <RemainCard label="Protein"  remaining={GOALS.protein - macros.p}   consumed={macros.p} total={GOALS.protein}
+          unit="g"    icon="💪" color="#8b5cf6" bgClass="bg-purple-50" />
+        <RemainCard label="Budget"   remaining={GOALS.dailyBudget - spent}  consumed={spent}  total={GOALS.dailyBudget}
+          unit="₹"   icon="💰" color="#f59e0b" bgClass="bg-amber-50" />
       </div>
 
-      <StepsRing steps={steps} />
+      <StepsBar steps={steps} />
       <GoalList log={log} />
       <Meals log={log} />
       <SpendingView log={log} />
 
       {log?.badges_unlocked?.length > 0 && (
-        <div className="bg-yellow-50 rounded-2xl p-3 border border-yellow-100">
-          <h3 className="text-yellow-700 font-semibold mb-1.5 text-sm">🎉 Badges Unlocked!</h3>
-          <div className="flex gap-2 flex-wrap">
+        <div className="bg-yellow-50 rounded-xl p-3 border border-yellow-100">
+          <div className="text-yellow-700 font-semibold text-xs mb-1.5">🎉 Badges Unlocked!</div>
+          <div className="flex gap-1.5 flex-wrap">
             {log.badges_unlocked.map(b => (
-              <span key={b} className="bg-yellow-100 text-yellow-700 text-xs px-2.5 py-1 rounded-full font-medium">{b}</span>
+              <span key={b} className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-medium">{b}</span>
             ))}
           </div>
         </div>
@@ -438,11 +395,11 @@ export default function Today({ log, yesterdayLog, onRefresh }) {
   const [tab, setTab] = useState('today')
 
   return (
-    <div className="space-y-3 fade-up">
-      <div className="flex gap-1.5 bg-gray-100 rounded-xl p-1">
+    <div className="space-y-2 fade-up">
+      <div className="flex gap-1 bg-gray-100/80 rounded-xl p-0.5">
         {[['today','📊 Today'],['yesterday','📅 Yesterday']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-all ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
             }`}>
             {label}

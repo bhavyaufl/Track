@@ -49,51 +49,52 @@ function HeroBanner({ logs, levels, todayLog }) {
   const ringColor = power >= 70 ? '#34d399' : power >= 40 ? '#a78bfa' : '#fbbf24'
 
   return (
-    <div className="rounded-3xl overflow-hidden"
+    <div className="rounded-2xl overflow-hidden"
       style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%)' }}>
-      <div className="px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between mb-4">
+      <div className="px-4 pt-4 pb-3">
+        {/* Top row: text + ring */}
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="text-white/60 text-xs font-medium uppercase tracking-wider">Overall Progress</div>
-            <div className="text-white text-4xl font-black mt-0.5">{power}%</div>
-            <div className="text-white/60 text-xs mt-0.5">of Aug 9 goals</div>
+            <div className="text-white/60 text-xs font-medium uppercase tracking-wider">Overall Power</div>
+            <div className="text-white text-3xl font-black leading-none mt-0.5">{power}%</div>
+            <div className="text-white/50 text-xs mt-0.5">of Aug 9 goals · {left}d left</div>
           </div>
           <div className="relative">
-            <svg width={100} height={100} style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx={50} cy={50} r={44} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={10} />
-              <circle cx={50} cy={50} r={44} fill="none" stroke={ringColor} strokeWidth={10}
-                strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 1s ease' }} />
+            <svg width={80} height={80} style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx={40} cy={40} r={34} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={8} />
+              <circle cx={40} cy={40} r={34} fill="none" stroke={ringColor} strokeWidth={8}
+                strokeDasharray={2 * Math.PI * 34} strokeDashoffset={2 * Math.PI * 34 * (1 - power / 100)}
+                strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease' }} />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-white text-xl font-black">{power}%</div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-white text-sm font-black">{power}%</div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        {/* Stat pills */}
+        <div className="grid grid-cols-3 gap-1.5">
           {[
-            { label: 'Days left', value: left, icon: '⏳', color: 'bg-white/10' },
-            { label: 'Weight', value: `${curWeight} kg`, icon: '⚖️', color: 'bg-white/10' },
-            { label: 'Total XP', value: `⚡${totalXP}`, icon: null, color: 'bg-white/10' },
+            { label: 'Weight',  value: `${curWeight} kg`, icon: '⚖️' },
+            { label: 'Total XP', value: `⚡${totalXP.toLocaleString()}`, icon: null },
+            { label: 'Score',   value: `${score}/100`, icon: null },
           ].map(s => (
-            <div key={s.label} className={`${s.color} rounded-2xl p-3 text-center backdrop-blur`}>
-              {s.icon && <div className="text-lg">{s.icon}</div>}
-              <div className="text-white font-bold text-sm">{s.value}</div>
-              <div className="text-white/50 text-xs">{s.label}</div>
+            <div key={s.label} className="bg-white/10 backdrop-blur rounded-xl px-2 py-2 text-center">
+              <div className="text-white font-bold text-xs">{s.value}</div>
+              <div className="text-white/50 text-xs leading-none mt-0.5">{s.label}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Weight progress bar */}
-      <div className="px-5 pb-5">
-        <div className="flex justify-between text-xs text-white/50 mb-1.5">
-          <span>Start: {GOALS.startWeight} kg</span>
+      <div className="px-4 pb-3">
+        <div className="flex justify-between text-xs text-white/50 mb-1">
+          <span>{GOALS.startWeight} kg</span>
           <span>{weightPct}% to goal</span>
-          <span>Target: {GOALS.weightTarget} kg ↑</span>
+          <span>{GOALS.weightTarget} kg ↑</span>
         </div>
-        <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
           <div className="h-full bg-white rounded-full transition-all duration-700"
             style={{ width: `${Math.max(weightPct, 0)}%` }} />
         </div>
@@ -122,53 +123,42 @@ function TodaySnapshot({ todayLog }) {
   const color = score >= 80 ? '#10b981' : score >= 50 ? '#6366f1' : '#f59e0b'
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-700">Today</h3>
-        <span className="text-gray-400 text-xs">{new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })}</span>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-50">
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Today</span>
+        <span className="text-xs font-bold text-indigo-500">{goalsHit}/5 goals</span>
       </div>
-      <div className="flex items-center gap-4">
-        {/* mini score ring */}
+      <div className="flex items-center gap-3 px-3 py-2.5">
         <div className="relative shrink-0">
-          <svg width={72} height={72} style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx={36} cy={36} r={28} fill="none" stroke="#f1f5f9" strokeWidth={8} />
-            <circle cx={36} cy={36} r={28} fill="none" stroke={color} strokeWidth={8}
-              strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
+          <svg width={52} height={52} style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx={26} cy={26} r={20} fill="none" stroke="#f1f5f9" strokeWidth={5.5} />
+            <circle cx={26} cy={26} r={20} fill="none" stroke={color} strokeWidth={5.5}
+              strokeDasharray={2 * Math.PI * 20} strokeDashoffset={2 * Math.PI * 20 * (1 - score / 100)} strokeLinecap="round" />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-lg font-black text-gray-800">{score}</div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-sm font-black text-gray-800">{score}</div>
           </div>
         </div>
-        {/* goal dots */}
-        <div className="flex-1">
-          <div className="text-gray-500 text-sm mb-2">{goalsHit}/5 goals hit</div>
-          <div className="flex gap-1.5">
+        <div className="flex-1 min-w-0">
+          <div className="flex gap-1 mb-1.5">
             {goals.map(g => (
               <div key={g.label} title={g.label}
                 className={`flex-1 h-2 rounded-full ${g.hit ? 'bg-emerald-400' : 'bg-gray-100'}`} />
             ))}
           </div>
-          <div className="flex justify-between mt-1">
-            {goals.map(g => (
-              <div key={g.label} className="text-xs text-gray-300 text-center"
-                style={{ width: `${100/goals.length}%` }}>{g.label.slice(0,3)}</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { label: 'Cal', val: cal ? `${cal}` : '—', ok: cal >= GOALS.calories.target },
+              { label: 'Protein', val: macros.p ? `${macros.p}g` : '—', ok: macros.p >= GOALS.protein },
+              { label: 'Steps', val: steps ? `${(steps/1000).toFixed(1)}k` : '—', ok: steps >= 10000 },
+            ].map(s => (
+              <div key={s.label} className={`rounded-lg px-1.5 py-1 text-center ${s.ok ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                <div className={`text-xs font-bold ${s.ok ? 'text-emerald-600' : 'text-gray-600'}`}>{s.val}</div>
+                <div className="text-gray-400 text-xs leading-none">{s.label}</div>
+              </div>
             ))}
           </div>
         </div>
-      </div>
-
-      {/* quick stats */}
-      <div className="grid grid-cols-3 gap-2 mt-3">
-        {[
-          { label: 'Calories', val: cal || '—', target: String(GOALS.calories.target), unit: 'kcal', ok: cal >= GOALS.calories.target },
-          { label: 'Protein',  val: macros.p || '—', target: String(GOALS.protein), unit: 'g', ok: macros.p >= GOALS.protein },
-          { label: 'Steps',    val: steps ? (steps/1000).toFixed(1)+'k' : '—', target: '10k', unit: '', ok: steps >= 10000 },
-        ].map(s => (
-          <div key={s.label} className={`rounded-xl p-2.5 text-center ${s.ok ? 'bg-emerald-50' : 'bg-gray-50'}`}>
-            <div className={`text-lg font-bold ${s.ok ? 'text-emerald-600' : 'text-gray-700'}`}>{s.val}</div>
-            <div className="text-gray-400 text-xs">{s.label}</div>
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -190,7 +180,7 @@ function CalorieTrend({ logs }) {
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400 inline-block"/>Calories</span>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={140}>
+      <ResponsiveContainer width="100%" height={120}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">
@@ -203,7 +193,7 @@ function CalorieTrend({ logs }) {
           <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 2400]} width={35} />
           <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }} />
           <ReferenceLine y={GOALS.calories.target} stroke="#a5b4fc" strokeDasharray="4 2"
-            label={{ value: '1800', fill: '#818cf8', fontSize: 9, position: 'right' }} />
+            label={{ value: `${GOALS.calories.target}`, fill: '#818cf8', fontSize: 9, position: 'right' }} />
           <Area type="monotone" dataKey="cal" stroke="#6366f1" strokeWidth={2.5}
             fill="url(#calGrad)" dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} name="kcal" />
         </AreaChart>
@@ -257,7 +247,7 @@ function WeightTrend({ logs }) {
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={140}>
+      <ResponsiveContainer width="100%" height={120}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
@@ -332,7 +322,7 @@ function BalanceTrend({ logs }) {
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={140}>
+      <ResponsiveContainer width="100%" height={120}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
@@ -394,16 +384,16 @@ function LiftSnapshot({ levels }) {
 function Streaks({ logs }) {
   const { log, gym, protein } = calcStreaks(logs)
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-3 gap-2">
       {[
-        { emoji: '🔥', val: log, label: 'Log streak', color: 'text-orange-500', bg: 'from-orange-50 to-red-50', border: 'border-orange-100' },
-        { emoji: '🏋️', val: gym, label: 'Gym streak', color: 'text-indigo-600', bg: 'from-indigo-50 to-purple-50', border: 'border-indigo-100' },
-        { emoji: '🎯', val: protein, label: 'Protein', color: 'text-emerald-600', bg: 'from-emerald-50 to-teal-50', border: 'border-emerald-100' },
+        { emoji: '🔥', val: log,     label: 'Log streak',  color: 'text-orange-500',  bg: 'from-orange-50 to-red-50',    border: 'border-orange-100' },
+        { emoji: '🏋️', val: gym,     label: 'Gym streak',  color: 'text-indigo-600',  bg: 'from-indigo-50 to-purple-50', border: 'border-indigo-100' },
+        { emoji: '🎯', val: protein, label: 'Protein',      color: 'text-emerald-600', bg: 'from-emerald-50 to-teal-50',  border: 'border-emerald-100' },
       ].map(s => (
-        <div key={s.label} className={`bg-gradient-to-br ${s.bg} border ${s.border} rounded-2xl p-3 text-center`}>
-          <div className="text-2xl">{s.emoji}</div>
-          <div className={`text-2xl font-black ${s.color}`}>{s.val}d</div>
-          <div className="text-gray-400 text-xs">{s.label}</div>
+        <div key={s.label} className={`bg-gradient-to-br ${s.bg} border ${s.border} rounded-xl p-2.5 text-center`}>
+          <div className="text-lg">{s.emoji}</div>
+          <div className={`text-xl font-black leading-none ${s.color}`}>{s.val}d</div>
+          <div className="text-gray-400 text-xs mt-0.5">{s.label}</div>
         </div>
       ))}
     </div>

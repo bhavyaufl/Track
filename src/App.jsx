@@ -64,72 +64,67 @@ export default function App() {
   const latestWeight = logs.find(l => l.weight)?.weight
 
   return (
-    <div className="bg-gray-50" style={{ minHeight: '100dvh' }}>
-      {/* Header */}
-      <div className="bg-white fixed top-0 left-0 right-0 z-20"
-        style={{ boxShadow: '0 2px 0 #e2e8f0' }}>
-        <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-white text-base font-black shadow-md shadow-indigo-200"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>B</div>
-            <div>
-              <div className="text-gray-900 font-bold text-sm leading-tight">Bhavya's Tracker</div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-gray-600 text-xs font-medium">{dateStr}</span>
+    <div style={{ minHeight: '100dvh', background: '#f8f9fc' }}>
+      {/* ── Header ── fixed 52px */}
+      <header className="bg-white fixed top-0 left-0 right-0 z-20 flex items-center"
+        style={{ height: 52, borderBottom: '1px solid #e8eaed', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
+        <div className="max-w-3xl mx-auto w-full px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-black"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', boxShadow: '0 2px 8px rgba(99,102,241,0.35)' }}>B</div>
+            <div className="leading-none">
+              <div className="text-gray-800 font-bold text-sm">Bhavya's Tracker</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="text-gray-500 text-xs">{dateStr}</span>
                 <span className="text-gray-300 text-xs">·</span>
                 <span className="text-indigo-500 text-xs font-semibold tabular-nums">{timeStr}</span>
                 <span className="text-gray-300 text-xs">·</span>
-                <span className="text-gray-400 text-xs">{daysLeft}d left</span>
+                <span className="text-gray-400 text-xs">{daysLeft}d</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
             {latestWeight && (
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl px-3 py-1.5 text-center">
-                <div className="text-xs font-bold text-gray-700">{latestWeight} kg</div>
-                <div className="text-gray-400 text-xs leading-none">weight</div>
+              <div className="bg-gray-50 border border-gray-100 rounded-xl px-2 py-1 leading-none text-center">
+                <div className="text-xs font-bold text-gray-700">{latestWeight}<span className="font-normal text-gray-400">kg</span></div>
               </div>
             )}
             {todayScore > 0 && (
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-3 py-1.5 text-center">
-                <div className="text-xs font-bold text-emerald-600">{todayScore}/100</div>
-                <div className="text-gray-400 text-xs leading-none">today</div>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-2 py-1 leading-none">
+                <div className="text-xs font-bold text-emerald-600">{todayScore}<span className="font-normal text-emerald-400">/100</span></div>
               </div>
             )}
-            <div className="rounded-2xl px-3 py-1.5 text-center shadow-sm shadow-indigo-100"
+            <div className="rounded-xl px-2.5 py-1 leading-none"
               style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
-              <div className="text-xs font-black text-white">⚡ {totalXP.toLocaleString()}</div>
-              <div className="text-white/60 text-xs leading-none">XP</div>
+              <div className="text-xs font-bold text-white">⚡{totalXP.toLocaleString()}</div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Tab bar */}
-      <div className="bg-white fixed left-0 right-0 z-10 overflow-x-auto"
-        style={{ top: '65px', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-        <div className="max-w-3xl mx-auto flex min-w-max">
+      {/* ── Tab bar ── fixed 40px directly below header */}
+      <nav className="bg-white fixed left-0 right-0 z-10 overflow-x-auto"
+        style={{ top: 52, height: 40, borderBottom: '1px solid #e8eaed', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+        <div className="max-w-3xl mx-auto flex h-full min-w-max">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap transition-all border-b-2 relative',
-                activeTab === tab.id
-                  ? 'text-indigo-600 border-indigo-500'
-                  : 'text-gray-400 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                'flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap transition-colors relative',
+                activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
               )}>
-              <span className="text-base">{tab.emoji}</span>
+              <span className="text-sm">{tab.emoji}</span>
               <span>{tab.label}</span>
               {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
                   style={{ background: 'linear-gradient(90deg, #6366f1, #a855f7)' }} />
               )}
             </button>
           ))}
         </div>
-      </div>
+      </nav>
 
-      {/* Content — offset for fixed header (~61px) + tab bar (~49px) */}
-      <div className="max-w-3xl mx-auto px-5 pb-16" style={{ paddingTop: '122px' }}>
+      {/* ── Content — header 52px + tab 40px = 92px ── */}
+      <div className="max-w-3xl mx-auto px-4 pb-8" style={{ paddingTop: 100 }}>
         {!isConfigured && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
             ⚠️ Add Supabase keys to <code className="bg-amber-100 px-1 rounded">.env.local</code> then restart.
