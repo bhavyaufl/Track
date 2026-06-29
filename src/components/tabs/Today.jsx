@@ -132,33 +132,50 @@ function GoalList({ log }) {
 }
 
 function MealEditSheet({ meal, index, allMeals, log, onClose, onSaved }) {
-  const [text,   setText]   = useState(meal.text   || '')
-  const [time,   setTime]   = useState(meal.time   || '')
-  const [saving, setSaving] = useState(false)
+  const calcCal = (p, c, f) => Number(p||0)*4 + Number(c||0)*4 + Number(f||0)*9
+
+  const [text,    setText]    = useState(meal.text      || '')
+  const [time,    setTime]    = useState(meal.time      || '')
+  const [protein, setProtein] = useState(meal.macros?.p || 0)
+  const [carbs,   setCarbs]   = useState(meal.macros?.c || 0)
+  const [fat,     setFat]     = useState(meal.macros?.f || 0)
+  const [calOvr,  setCalOvr]  = useState(meal.calories ?? calcCal(meal.macros?.p, meal.macros?.c, meal.macros?.f))
+  const [calManual, setCalManual] = useState(meal.calories != null)
+  const [saving,  setSaving]  = useState(false)
+
+  function onMacroChange(setter, val) {
+    setter(Math.max(0, Number(val)))
+    if (!calManual) setCalOvr(calcCal(
+      setter === setProtein ? val : protein,
+      setter === setCarbs   ? val : carbs,
+      setter === setFat     ? val : fat,
+    ))
+  }
 
   function recalc(updatedMeals) {
-    const p = updatedMeals.reduce((s, m) => s + (m.macros?.p || 0), 0)
-    const c = updatedMeals.reduce((s, m) => s + (m.macros?.c || 0), 0)
-    const f = updatedMeals.reduce((s, m) => s + (m.macros?.f || 0), 0)
+    const p   = updatedMeals.reduce((s, m) => s + (m.macros?.p || 0), 0)
+    const c   = updatedMeals.reduce((s, m) => s + (m.macros?.c || 0), 0)
+    const f   = updatedMeals.reduce((s, m) => s + (m.macros?.f || 0), 0)
+    const cal = updatedMeals.reduce((s, m) => s + (m.calories ?? calcCal(m.macros?.p, m.macros?.c, m.macros?.f)), 0)
     return supabase.from('daily_logs').update({
-      meals:    updatedMeals,
-      macros:   { p, c, f },
-      calories: p*4 + c*4 + f*9,
+      meals: updatedMeals, macros: { p, c, f }, calories: cal,
     }).eq('date', log.date)
   }
 
   async function save() {
     setSaving(true)
-    const updated = allMeals.map((m, i) => i === index ? { ...m, text, time } : m)
+    const updated = allMeals.map((m, i) => i === index ? {
+      ...m, text, time,
+      macros:   { p: Number(protein)||0, c: Number(carbs)||0, f: Number(fat)||0 },
+      calories: Number(calOvr) || calcCal(protein, carbs, fat),
+    } : m)
     await recalc(updated)
     setSaving(false); onSaved(); onClose()
   }
 
   async function remove() {
     setSaving(true)
-    const updated = allMeals
-      .filter((_, i) => i !== index)
-      .map((m, i) => ({ ...m, label: `Meal ${i+1}` }))
+    const updated = allMeals.filter((_, i) => i !== index).map((m, i) => ({ ...m, label: `Meal ${i+1}` }))
     await recalc(updated)
     setSaving(false); onSaved(); onClose()
   }
@@ -172,9 +189,7 @@ function MealEditSheet({ meal, index, allMeals, log, onClose, onSaved }) {
           </span>
           <div className="flex items-center gap-3">
             <button onClick={remove} disabled={saving}
-              className="text-red-400 text-xs font-semibold hover:text-red-600 transition-colors">
-              🗑 Remove
-            </button>
+              className="text-red-400 text-xs font-semibold hover:text-red-600 transition-colors">🗑 Remove</button>
             <button onClick={onClose} className="text-gray-400 text-xs">Cancel</button>
             <button onClick={save} disabled={saving}
               className="bg-indigo-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl disabled:opacity-50">
@@ -191,10 +206,39 @@ function MealEditSheet({ meal, index, allMeals, log, onClose, onSaved }) {
             </div>
             <div className="flex-1">
               <label className="text-gray-400 text-xs mb-1.5 block">What did you eat?</label>
-              <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
+              <textarea value={text} onChange={e => setText(e.target.value)} rows={2}
                 placeholder="e.g. 2 rotis, dal, salad"
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-indigo-400 resize-none" />
             </div>
+          </div>
+
+          <div>
+            <label className="text-gray-400 text-xs mb-1.5 block">Macros</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[['P (g)', protein, setProtein, '#6366f1'],
+                ['C (g)', carbs,   setCarbs,   '#f59e0b'],
+                ['F (g)', fat,     setFat,     '#ec4899']].map(([label, val, setter, clr]) => (
+                <div key={label}>
+                  <div className="text-xs text-gray-400 mb-1 text-center">{label}</div>
+                  <input type="number" min="0" value={val}
+                    onChange={e => onMacroChange(setter, e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-semibold focus:outline-none focus:border-indigo-400"
+                    style={{ color: clr }} />
+                </div>
+              ))}
+              <div>
+                <div className="text-xs text-gray-400 mb-1 text-center">kcal</div>
+                <input type="number" min="0" value={calOvr}
+                  onChange={e => { setCalOvr(e.target.value); setCalManual(true) }}
+                  className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-2 py-2 text-sm text-center font-bold text-indigo-600 focus:outline-none focus:border-indigo-400" />
+              </div>
+            </div>
+            {calManual && (
+              <button onClick={() => { setCalOvr(calcCal(protein,carbs,fat)); setCalManual(false) }}
+                className="text-xs text-gray-400 mt-1.5 hover:text-indigo-500 transition-colors">
+                ↺ reset to calculated ({calcCal(protein,carbs,fat)} kcal)
+              </button>
+            )}
           </div>
         </div>
       </div>

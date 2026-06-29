@@ -59,32 +59,46 @@ function SevenDayChart({ logs }) {
 
 function EditMealModal({ mealIndex, meals, log, onClose, onSaved }) {
   const meal = meals[mealIndex] || {}
-  const [text,    setText]    = useState(meal.text    || '')
-  const [time,    setTime]    = useState(meal.time    || '')
-  const [protein, setProtein] = useState(meal.macros?.p || 0)
-  const [carbs,   setCarbs]   = useState(meal.macros?.c || 0)
-  const [fat,     setFat]     = useState(meal.macros?.f || 0)
+  const calcCal = (p, c, f) => Number(p||0)*4 + Number(c||0)*4 + Number(f||0)*9
+
+  const [text,    setText]    = useState(meal.text       || '')
+  const [time,    setTime]    = useState(meal.time       || '')
+  const [protein, setProtein] = useState(meal.macros?.p  || 0)
+  const [carbs,   setCarbs]   = useState(meal.macros?.c  || 0)
+  const [fat,     setFat]     = useState(meal.macros?.f  || 0)
+  const [calOvr,  setCalOvr]  = useState(meal.calories ?? calcCal(meal.macros?.p, meal.macros?.c, meal.macros?.f))
   const [saving,  setSaving]  = useState(false)
 
-  const mealCal = protein * 4 + carbs * 4 + fat * 9
+  // Keep calorie field in sync when macros change, unless user has manually overridden it
+  const [calManual, setCalManual] = useState(meal.calories != null)
+  function onMacroChange(setter, val) {
+    setter(Math.max(0, Number(val)))
+    if (!calManual) setCalOvr(calcCal(
+      setter === setProtein ? val : protein,
+      setter === setCarbs   ? val : carbs,
+      setter === setFat     ? val : fat,
+    ))
+  }
 
   function recalcAndSave(updatedMeals) {
     const totalP   = updatedMeals.reduce((s, m) => s + (m.macros?.p || 0), 0)
     const totalC   = updatedMeals.reduce((s, m) => s + (m.macros?.c || 0), 0)
     const totalF   = updatedMeals.reduce((s, m) => s + (m.macros?.f || 0), 0)
-    const totalCal = totalP*4 + totalC*4 + totalF*9
+    const totalCal = updatedMeals.reduce((s, m) => s + (m.calories ?? calcCal(m.macros?.p, m.macros?.c, m.macros?.f)), 0)
     return supabase.from('daily_logs').update({
-      meals:   updatedMeals,
-      macros:  { p: totalP, c: totalC, f: totalF },
+      meals:    updatedMeals,
+      macros:   { p: totalP, c: totalC, f: totalF },
       calories: totalCal,
     }).eq('date', log.date)
   }
 
   async function save() {
     setSaving(true)
-    const updated = meals.map((m, i) => i === mealIndex
-      ? { ...m, text, time, macros: { p: Number(protein)||0, c: Number(carbs)||0, f: Number(fat)||0 } }
-      : m)
+    const updated = meals.map((m, i) => i === mealIndex ? {
+      ...m, text, time,
+      macros:   { p: Number(protein)||0, c: Number(carbs)||0, f: Number(fat)||0 },
+      calories: Number(calOvr) || calcCal(protein, carbs, fat),
+    } : m)
     await recalcAndSave(updated)
     setSaving(false); onSaved(); onClose()
   }
@@ -131,24 +145,31 @@ function EditMealModal({ mealIndex, meals, log, onClose, onSaved }) {
 
           <div>
             <label className="text-gray-400 text-xs mb-1.5 block">Macros</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[['Protein (g)', protein, setProtein, '#6366f1'],
-                ['Carbs (g)',   carbs,   setCarbs,   '#f59e0b'],
-                ['Fat (g)',     fat,     setFat,     '#ec4899']].map(([label, val, setter, clr]) => (
+            <div className="grid grid-cols-4 gap-2">
+              {[['P (g)', protein, setProtein, '#6366f1'],
+                ['C (g)', carbs,   setCarbs,   '#f59e0b'],
+                ['F (g)', fat,     setFat,     '#ec4899']].map(([label, val, setter, clr]) => (
                 <div key={label}>
-                  <div className="text-xs text-gray-400 mb-1">{label}</div>
+                  <div className="text-xs text-gray-400 mb-1 text-center">{label}</div>
                   <input type="number" min="0" value={val}
-                    onChange={e => setter(Math.max(0, Number(e.target.value)))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center font-semibold focus:outline-none focus:border-indigo-400"
+                    onChange={e => onMacroChange(setter, e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-semibold focus:outline-none focus:border-indigo-400"
                     style={{ color: clr }} />
                 </div>
               ))}
+              <div>
+                <div className="text-xs text-gray-400 mb-1 text-center">kcal</div>
+                <input type="number" min="0" value={calOvr}
+                  onChange={e => { setCalOvr(e.target.value); setCalManual(true) }}
+                  className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-2 py-2 text-sm text-center font-bold text-indigo-600 focus:outline-none focus:border-indigo-400" />
+              </div>
             </div>
-          </div>
-
-          <div className="bg-indigo-50 rounded-xl px-4 py-2.5 flex justify-between items-center">
-            <span className="text-indigo-600 text-sm font-medium">This meal</span>
-            <span className="text-indigo-600 font-bold">{mealCal} kcal</span>
+            {calManual && (
+              <button onClick={() => { setCalOvr(calcCal(protein,carbs,fat)); setCalManual(false) }}
+                className="text-xs text-gray-400 mt-1.5 hover:text-indigo-500 transition-colors">
+                ↺ reset to calculated ({calcCal(protein,carbs,fat)} kcal)
+              </button>
+            )}
           </div>
         </div>
       </div>
