@@ -132,13 +132,16 @@ function GoalList({ log }) {
 }
 
 function Meals({ log }) {
-  const items = [
+  const meals = log?.meals || []
+  // Legacy fallback for older logs
+  const legacy = [
     { label: 'Breakfast', icon: '🌅', key: 'breakfast' },
-    { label: 'Lunch',     icon: '☀️', key: 'lunch'      },
-    { label: 'Dinner',    icon: '🌙', key: 'dinner'     },
-    { label: 'Snacks',    icon: '🍿', key: 'snacks'     },
+    { label: 'Lunch',     icon: '☀️', key: 'lunch' },
+    { label: 'Dinner',    icon: '🌙', key: 'dinner' },
+    { label: 'Snacks',    icon: '🍿', key: 'snacks' },
   ].filter(m => log?.[m.key])
-  if (!items.length) return null
+
+  if (!meals.length && !legacy.length) return null
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -146,22 +149,43 @@ function Meals({ log }) {
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Meals</span>
       </div>
       <div className="divide-y divide-gray-50">
-        {items.map(m => {
-          const mx   = log.meal_macros?.[m.key]
-          const kcal = mx ? mx.p * 4 + mx.c * 4 + mx.f * 9 : null
-          return (
-            <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
-              <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs font-medium text-gray-500">{m.label}</span>
-                  {kcal && <span className="text-xs text-gray-400 shrink-0">{kcal}kcal</span>}
+        {meals.length > 0
+          ? meals.map((m, i) => {
+              const kcal = m.macros ? m.macros.p*4 + m.macros.c*4 + m.macros.f*9 : null
+              return (
+                <div key={i} className="flex items-start gap-2 px-3 py-1.5">
+                  <div className="shrink-0 pt-0.5">
+                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                      {m.label || `Meal ${i+1}`}
+                    </span>
+                    {m.time && <div className="text-xs text-gray-400 text-center mt-0.5">{m.time}</div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs text-gray-600">{m.text}</span>
+                      {kcal ? <span className="text-xs text-gray-400 shrink-0 ml-2">{kcal}kcal</span> : null}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
-              </div>
-            </div>
-          )
-        })}
+              )
+            })
+          : legacy.map(m => {
+              const mx   = log.meal_macros?.[m.key]
+              const kcal = mx ? mx.p*4 + mx.c*4 + mx.f*9 : null
+              return (
+                <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
+                  <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-xs font-medium text-gray-500">{m.label}</span>
+                      {kcal && <span className="text-xs text-gray-400 shrink-0">{kcal}kcal</span>}
+                    </div>
+                    <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
+                  </div>
+                </div>
+              )
+            })
+        }
       </div>
     </div>
   )
@@ -208,8 +232,19 @@ function Field({ label, value, onChange, type = 'text', placeholder = '' }) {
   )
 }
 
+function buildInitialMeals(log) {
+  if (log?.meals?.length > 0) return log.meals
+  // Migrate legacy breakfast/lunch/dinner/snacks to meals array
+  return [
+    log?.breakfast && { label: 'Meal 1', text: log.breakfast, time: '', macros: log.meal_macros?.breakfast || {p:0,c:0,f:0} },
+    log?.lunch     && { label: 'Meal 2', text: log.lunch,     time: '', macros: log.meal_macros?.lunch     || {p:0,c:0,f:0} },
+    log?.dinner    && { label: 'Meal 3', text: log.dinner,    time: '', macros: log.meal_macros?.dinner    || {p:0,c:0,f:0} },
+    log?.snacks    && { label: 'Meal 4', text: log.snacks,    time: '', macros: log.meal_macros?.snacks    || {p:0,c:0,f:0} },
+  ].filter(Boolean)
+}
+
 function EditLogModal({ log, onClose, onSaved }) {
-  const [meals,      setMeals]      = useState({ breakfast: log?.breakfast||'', lunch: log?.lunch||'', dinner: log?.dinner||'', snacks: log?.snacks||'' })
+  const [meals,      setMeals]      = useState(() => buildInitialMeals(log))
   const [calories,   setCalories]   = useState(log?.calories || 0)
   const [macros,     setMacros]     = useState(log?.macros   || { p: 0, c: 0, f: 0 })
   const [steps,      setSteps]      = useState(log?.steps    || 0)
@@ -227,13 +262,23 @@ function EditLogModal({ log, onClose, onSaved }) {
     setNewItem({ item: '', category: 'Food', amount: '' })
   }
 
+  function updateMeal(i, patch) {
+    setMeals(prev => prev.map((m, j) => j === i ? { ...m, ...patch } : m))
+  }
+  function addMeal() {
+    setMeals(prev => [...prev, { label: `Meal ${prev.length + 1}`, text: '', time: '', macros: {p:0,c:0,f:0} }])
+  }
+  function removeMeal(i) {
+    setMeals(prev => prev.filter((_, j) => j !== i).map((m, j) => ({ ...m, label: `Meal ${j+1}` })))
+  }
+
   async function save() {
     setSaving(true)
+    const cleanMeals = meals
+      .filter(m => m.text?.trim())
+      .map((m, i) => ({ label: `Meal ${i+1}`, text: m.text.trim(), time: m.time || '', macros: m.macros || {p:0,c:0,f:0} }))
     await supabase.from('daily_logs').update({
-      breakfast:   meals.breakfast || null,
-      lunch:       meals.lunch     || null,
-      dinner:      meals.dinner    || null,
-      snacks:      meals.snacks    || null,
+      meals:       cleanMeals,
       calories:    Number(calories)   || 0,
       macros,
       steps:       Number(steps)      || 0,
@@ -246,8 +291,7 @@ function EditLogModal({ log, onClose, onSaved }) {
     onClose()
   }
 
-  const CATS     = ['Food','Transport','Shopping','Entertainment','Health','Rent','Subscriptions','Bills','Education']
-  const MEAL_KEYS = [['breakfast','🌅 Breakfast'],['lunch','☀️ Lunch'],['dinner','🌙 Dinner'],['snacks','🍿 Snacks']]
+  const CATS = ['Food','Transport','Shopping','Entertainment','Health','Rent','Subscriptions','Bills','Education']
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" onClick={onClose}>
@@ -267,19 +311,37 @@ function EditLogModal({ log, onClose, onSaved }) {
         </div>
 
         <div className="overflow-y-auto px-5 py-4 space-y-6 pb-10">
+          {/* Meals */}
           <section>
-            <h4 className="text-gray-700 font-semibold text-sm mb-3">Meals</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-gray-700 font-semibold text-sm">Meals</h4>
+              <button onClick={addMeal}
+                className="text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg font-medium transition-colors">
+                + Add meal
+              </button>
+            </div>
+            {meals.length === 0 && (
+              <p className="text-gray-300 text-xs text-center py-2">No meals yet — tap + Add meal</p>
+            )}
             <div className="space-y-2">
-              {MEAL_KEYS.map(([key, label]) => (
-                <div key={key} className="flex items-start gap-2">
-                  <div className="flex-1">
-                    <Field label={label} value={meals[key]} placeholder={`No ${key} logged`}
-                      onChange={v => setMeals(m => ({ ...m, [key]: v }))} />
+              {meals.map((m, i) => (
+                <div key={i} className="bg-gray-50 rounded-xl p-2.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                      {m.label || `Meal ${i+1}`}
+                    </span>
+                    <button onClick={() => removeMeal(i)}
+                      className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none px-1">×</button>
                   </div>
-                  {meals[key] && (
-                    <button onClick={() => setMeals(m => ({ ...m, [key]: '' }))}
-                      className="mt-6 text-gray-300 hover:text-red-400 transition-colors px-1.5 text-lg leading-none">×</button>
-                  )}
+                  <div className="flex gap-2">
+                    <input type="time" value={m.time || ''}
+                      onChange={e => updateMeal(i, { time: e.target.value })}
+                      className="w-24 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-400 shrink-0" />
+                    <input type="text" value={m.text || ''}
+                      onChange={e => updateMeal(i, { text: e.target.value })}
+                      placeholder="What did you eat?"
+                      className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-400" />
+                  </div>
                 </div>
               ))}
             </div>
