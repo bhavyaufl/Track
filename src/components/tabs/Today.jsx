@@ -131,8 +131,81 @@ function GoalList({ log }) {
   )
 }
 
-function Meals({ log }) {
+function MealEditSheet({ meal, index, allMeals, log, onClose, onSaved }) {
+  const [text,   setText]   = useState(meal.text   || '')
+  const [time,   setTime]   = useState(meal.time   || '')
+  const [saving, setSaving] = useState(false)
+
+  function recalc(updatedMeals) {
+    const p = updatedMeals.reduce((s, m) => s + (m.macros?.p || 0), 0)
+    const c = updatedMeals.reduce((s, m) => s + (m.macros?.c || 0), 0)
+    const f = updatedMeals.reduce((s, m) => s + (m.macros?.f || 0), 0)
+    return supabase.from('daily_logs').update({
+      meals:    updatedMeals,
+      macros:   { p, c, f },
+      calories: p*4 + c*4 + f*9,
+    }).eq('date', log.date)
+  }
+
+  async function save() {
+    setSaving(true)
+    const updated = allMeals.map((m, i) => i === index ? { ...m, text, time } : m)
+    await recalc(updated)
+    setSaving(false); onSaved(); onClose()
+  }
+
+  async function remove() {
+    setSaving(true)
+    const updated = allMeals
+      .filter((_, i) => i !== index)
+      .map((m, i) => ({ ...m, label: `Meal ${i+1}` }))
+    await recalc(updated)
+    setSaving(false); onSaved(); onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end" onClick={onClose}>
+      <div className="bg-white rounded-t-3xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+          <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+            {meal.label || `Meal ${index+1}`}
+          </span>
+          <div className="flex items-center gap-3">
+            <button onClick={remove} disabled={saving}
+              className="text-red-400 text-xs font-semibold hover:text-red-600 transition-colors">
+              🗑 Remove
+            </button>
+            <button onClick={onClose} className="text-gray-400 text-xs">Cancel</button>
+            <button onClick={save} disabled={saving}
+              className="bg-indigo-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl disabled:opacity-50">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+        <div className="px-5 py-4 pb-8 space-y-3">
+          <div className="flex gap-3">
+            <div className="shrink-0">
+              <label className="text-gray-400 text-xs mb-1.5 block">Time</label>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-indigo-400 w-28" />
+            </div>
+            <div className="flex-1">
+              <label className="text-gray-400 text-xs mb-1.5 block">What did you eat?</label>
+              <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
+                placeholder="e.g. 2 rotis, dal, salad"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-indigo-400 resize-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Meals({ log, onRefresh }) {
+  const [editingIndex, setEditingIndex] = useState(null)
   const meals = log?.meals || []
+
   // Legacy fallback for older logs
   const legacy = [
     { label: 'Breakfast', icon: '🌅', key: 'breakfast' },
@@ -144,50 +217,66 @@ function Meals({ log }) {
   if (!meals.length && !legacy.length) return null
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-gray-50">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Meals</span>
-      </div>
-      <div className="divide-y divide-gray-50">
-        {meals.length > 0
-          ? meals.map((m, i) => {
-              const kcal = m.macros ? m.macros.p*4 + m.macros.c*4 + m.macros.f*9 : null
-              return (
-                <div key={i} className="flex items-start gap-2 px-3 py-1.5">
-                  <div className="shrink-0 pt-0.5">
-                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                      {m.label || `Meal ${i+1}`}
-                    </span>
-                    {m.time && <div className="text-xs text-gray-400 text-center mt-0.5">{m.time}</div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-xs text-gray-600">{m.text}</span>
-                      {kcal ? <span className="text-xs text-gray-400 shrink-0 ml-2">{kcal}kcal</span> : null}
+    <>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-50">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Meals</span>
+          {meals.length > 0 && <span className="text-xs text-gray-300">tap to edit</span>}
+        </div>
+        <div className="divide-y divide-gray-50">
+          {meals.length > 0
+            ? meals.map((m, i) => {
+                const kcal = m.macros ? m.macros.p*4 + m.macros.c*4 + m.macros.f*9 : null
+                return (
+                  <button key={i} onClick={() => setEditingIndex(i)}
+                    className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-gray-50 transition-colors">
+                    <div className="shrink-0 pt-0.5">
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                        {m.label || `Meal ${i+1}`}
+                      </span>
+                      {m.time && <div className="text-xs text-gray-400 text-center mt-0.5">{m.time}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xs text-gray-600">{m.text}</span>
+                        {kcal ? <span className="text-xs text-gray-400 shrink-0 ml-2">{kcal}kcal</span> : null}
+                      </div>
+                    </div>
+                    <span className="text-gray-300 text-xs shrink-0 mt-0.5">✏️</span>
+                  </button>
+                )
+              })
+            : legacy.map(m => {
+                const mx   = log.meal_macros?.[m.key]
+                const kcal = mx ? mx.p*4 + mx.c*4 + mx.f*9 : null
+                return (
+                  <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
+                    <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-xs font-medium text-gray-500">{m.label}</span>
+                        {kcal && <span className="text-xs text-gray-400 shrink-0">{kcal}kcal</span>}
+                      </div>
+                      <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
                     </div>
                   </div>
-                </div>
-              )
-            })
-          : legacy.map(m => {
-              const mx   = log.meal_macros?.[m.key]
-              const kcal = mx ? mx.p*4 + mx.c*4 + mx.f*9 : null
-              return (
-                <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
-                  <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-xs font-medium text-gray-500">{m.label}</span>
-                      {kcal && <span className="text-xs text-gray-400 shrink-0">{kcal}kcal</span>}
-                    </div>
-                    <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
-                  </div>
-                </div>
-              )
-            })
-        }
+                )
+              })
+          }
+        </div>
       </div>
-    </div>
+
+      {editingIndex !== null && meals[editingIndex] && (
+        <MealEditSheet
+          meal={meals[editingIndex]}
+          index={editingIndex}
+          allMeals={meals}
+          log={log}
+          onClose={() => setEditingIndex(null)}
+          onSaved={() => { setEditingIndex(null); onRefresh?.() }}
+        />
+      )}
+    </>
   )
 }
 
@@ -428,7 +517,7 @@ function DayView({ log, onRefresh }) {
 
       <StepsBar steps={steps} />
       <GoalList log={log} />
-      <Meals log={log} />
+      <Meals log={log} onRefresh={onRefresh} />
       <SpendingView log={log} />
 
       {log?.badges_unlocked?.length > 0 && (
