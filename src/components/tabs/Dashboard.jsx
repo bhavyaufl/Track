@@ -1,4 +1,4 @@
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS, EXERCISE_GOALS, BADGES } from '../../lib/constants'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -39,8 +39,9 @@ function HeroBanner({ logs, levels, todayLog }) {
   const totalXP = logs.reduce((s, l) => s + (l.xp_earned || 0), 0)
   const score = todayLog?.daily_score || 0
 
+  // Lean bulk: progress = how far from start toward target weight
   const weightPct = Math.min(
-    Math.round(((GOALS.startWeight - curWeight) / (GOALS.startWeight - GOALS.weightTarget)) * 100), 100
+    Math.round(((curWeight - GOALS.startWeight) / (GOALS.weightTarget - GOALS.startWeight)) * 100), 100
   )
 
   const circ = 2 * Math.PI * 44
@@ -88,9 +89,9 @@ function HeroBanner({ logs, levels, todayLog }) {
       {/* Weight progress bar */}
       <div className="px-5 pb-5">
         <div className="flex justify-between text-xs text-white/50 mb-1.5">
-          <span>Weight: {GOALS.startWeight} kg</span>
+          <span>Start: {GOALS.startWeight} kg</span>
           <span>{weightPct}% to goal</span>
-          <span>Target: {GOALS.weightTarget} kg</span>
+          <span>Target: {GOALS.weightTarget} kg ↑</span>
         </div>
         <div className="h-2 bg-white/20 rounded-full overflow-hidden">
           <div className="h-full bg-white rounded-full transition-all duration-700"
@@ -211,96 +212,144 @@ function CalorieTrend({ logs }) {
   )
 }
 
+function buildWeightProjection() {
+  const start = new Date(GOALS.startDate)
+  const end   = new Date(GOALS.endDate)
+  const totalDays = (end - start) / 86400000
+  const pts = []
+  let cur = new Date(start)
+  while (cur <= end) {
+    const day = (cur - start) / 86400000
+    pts.push({
+      date: cur.toISOString().split('T')[0].slice(5),
+      ideal: Number((GOALS.startWeight + (day / totalDays) * (GOALS.weightTarget - GOALS.startWeight)).toFixed(1)),
+    })
+    cur.setDate(cur.getDate() + 7)
+  }
+  pts.push({ date: GOALS.endDate.slice(5), ideal: GOALS.weightTarget })
+  return pts
+}
+
 function WeightTrend({ logs }) {
-  const weightLogs = logs.filter(l => l.weight).slice(0, 30).reverse()
-  // Always include start point
-  const data = weightLogs.length
-    ? weightLogs.map(l => ({ date: l.date?.slice(5), w: Number(l.weight) }))
-    : [{ date: GOALS.startDate.slice(5), w: GOALS.startWeight }]
+  const weightLogs = logs.filter(l => l.weight).reverse()
+  const actualMap = Object.fromEntries(weightLogs.map(l => [l.date.slice(5), Number(l.weight)]))
+  const projection = buildWeightProjection()
+  const data = projection.map(p => ({ ...p, actual: actualMap[p.date] ?? null }))
 
   const latest = weightLogs[weightLogs.length - 1]?.weight || GOALS.startWeight
-  const lost = (GOALS.startWeight - latest).toFixed(1)
+  const gained = (latest - GOALS.startWeight).toFixed(1)
+  const toGoal = (GOALS.weightTarget - latest).toFixed(1)
+
+  const yMin = Math.min(GOALS.startWeight - 1, ...weightLogs.map(l => l.weight))
+  const yMax = Math.max(GOALS.weightTarget + 1, ...weightLogs.map(l => l.weight))
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
       <div className="flex justify-between items-center mb-1">
-        <h3 className="font-semibold text-gray-700">Weight</h3>
+        <div>
+          <h3 className="font-semibold text-gray-700">Weight</h3>
+          <div className="text-xs text-gray-400 mt-0.5">Lean bulk · target {GOALS.weightTarget} kg</div>
+        </div>
         <div className="text-right">
-          <div className="text-lg font-black text-emerald-600">{latest} kg</div>
+          <div className="text-lg font-black text-indigo-600">{latest} kg</div>
           <div className="text-xs text-gray-400">
-            {lost > 0 ? `−${lost} kg lost` : `goal: ${GOALS.weightTarget} kg`}
+            {gained > 0 ? `+${gained} kg gained` : `${toGoal} kg to goal`}
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={130}>
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
+      <ResponsiveContainer width="100%" height={140}>
+        <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
           <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }}
-            domain={[Math.min(GOALS.weightTarget - 1, latest - 1), GOALS.startWeight + 1]} width={32} />
+            domain={[yMin, yMax]} width={32} />
           <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
-            formatter={v => [`${v} kg`, 'Weight']} />
-          <ReferenceLine y={GOALS.weightTarget} stroke="#6ee7b7" strokeDasharray="4 2"
-            label={{ value: `${GOALS.weightTarget}kg`, fill: '#6ee7b7', fontSize: 9, position: 'right' }} />
-          <Area type="monotone" dataKey="w" stroke="#10b981" strokeWidth={2.5}
-            fill="url(#wGrad)" dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} name="kg" />
-        </AreaChart>
+            formatter={(v, name) => [`${v} kg`, name === 'ideal' ? 'Ideal' : 'Actual']} />
+          <Line dataKey="ideal" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 3"
+            dot={false} connectNulls name="ideal" />
+          <Line dataKey="actual" stroke="#6366f1" strokeWidth={2.5}
+            dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} connectNulls={false} name="actual" />
+        </LineChart>
       </ResponsiveContainer>
+      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-indigo-500 inline-block rounded" /> Actual</span>
+        <span className="flex items-center gap-1"><span className="w-4 border-t border-dashed border-gray-400 inline-block" /> Ideal trajectory</span>
+      </div>
     </div>
   )
 }
 
 function BalanceTrend({ logs }) {
-  const balanceLogs = logs.filter(l => l.account_balance).slice(0, 30).reverse()
-  const data = balanceLogs.map(l => ({ date: l.date?.slice(5), bal: Number(l.account_balance) }))
-  const latest = balanceLogs[balanceLogs.length - 1]?.account_balance
-
-  if (!data.length) return (
+  const balanceLogs = logs.filter(l => l.account_balance).reverse()
+  if (!balanceLogs.length) return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between" style={{ minHeight: 200 }}>
       <h3 className="font-semibold text-gray-700">Balance</h3>
       <div className="text-center text-gray-300 text-sm py-6">No balance data yet</div>
     </div>
   )
 
-  const first = data[0]?.bal || 0
-  const diff = latest - first
+  // Build combined actual + projection
+  const actualMap = Object.fromEntries(balanceLogs.map(l => [l.date.slice(5), Number(l.account_balance)]))
+  const latestLog = balanceLogs[balanceLogs.length - 1]
+  const latestBal = Number(latestLog.account_balance)
+  const latestDate = new Date(latestLog.date)
+  const endDate = new Date(GOALS.endDate)
+
+  // Projection: from latest date → end date, spending ₹1000/day
+  const projMap = {}
+  let cur = new Date(latestDate)
+  let bal = latestBal
+  while (cur <= endDate) {
+    projMap[cur.toISOString().split('T')[0].slice(5)] = Number(bal.toFixed(0))
+    cur.setDate(cur.getDate() + 7)
+    bal -= 7000
+  }
+  projMap[endDate.toISOString().split('T')[0].slice(5)] = Number(bal.toFixed(0))
+
+  // Merge: weekly points from first actual entry
+  const allDates = new Set([...Object.keys(actualMap), ...Object.keys(projMap)])
+  const data = Array.from(allDates).sort().map(date => ({
+    date,
+    actual: actualMap[date] ?? null,
+    forecast: projMap[date] ?? null,
+  }))
+
+  const first = balanceLogs[0]?.account_balance || 0
+  const diff = latestBal - first
   const up = diff >= 0
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
       <div className="flex justify-between items-center mb-1">
-        <h3 className="font-semibold text-gray-700">Balance</h3>
+        <div>
+          <h3 className="font-semibold text-gray-700">Balance</h3>
+          <div className="text-xs text-gray-400 mt-0.5">Projected at ₹1k/day spend</div>
+        </div>
         <div className="text-right">
-          <div className="text-lg font-black text-indigo-600">₹{Number(latest).toLocaleString()}</div>
+          <div className="text-lg font-black text-indigo-600">₹{latestBal.toLocaleString()}</div>
           <div className={`text-xs font-medium ${up ? 'text-emerald-500' : 'text-red-400'}`}>
-            {up ? '+' : ''}₹{diff.toLocaleString()} this period
+            {up ? '+' : ''}₹{diff.toLocaleString()} change
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={130}>
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
+      <ResponsiveContainer width="100%" height={140}>
+        <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={40}
-            tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} domain={['dataMin - 1000', 'dataMax + 1000']} />
+          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={42}
+            tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} domain={['dataMin - 2000', 'dataMax + 2000']} />
           <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
-            formatter={v => [`₹${Number(v).toLocaleString()}`, 'Balance']} />
-          <Area type="monotone" dataKey="bal" stroke="#6366f1" strokeWidth={2.5}
-            fill="url(#balGrad)" dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} name="Balance" />
-        </AreaChart>
+            formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name === 'forecast' ? 'Forecast' : 'Actual']} />
+          <Line dataKey="forecast" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 3"
+            dot={false} connectNulls name="forecast" />
+          <Line dataKey="actual" stroke="#6366f1" strokeWidth={2.5}
+            dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} connectNulls={false} name="actual" />
+        </LineChart>
       </ResponsiveContainer>
+      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-indigo-500 inline-block rounded" /> Actual</span>
+        <span className="flex items-center gap-1"><span className="w-4 border-t border-dashed border-gray-400 inline-block" /> Forecast</span>
+      </div>
     </div>
   )
 }
@@ -394,19 +443,24 @@ function BodyComp({ logs }) {
   const curWeight = logs.find(l => l.weight)?.weight || GOALS.startWeight
   const curBF = logs.find(l => l.body_fat)?.body_fat || GOALS.startBodyFat
 
+  // Lean bulk: weight should go UP toward target
   const weightPct = Math.max(0, Math.min(
-    Math.round(((GOALS.startWeight - curWeight) / (GOALS.startWeight - GOALS.weightTarget)) * 100), 100
+    Math.round(((curWeight - GOALS.startWeight) / (GOALS.weightTarget - GOALS.startWeight)) * 100), 100
   ))
+  // BF: should stay same or slightly improve (recomp)
   const bfPct = Math.max(0, Math.min(
     Math.round(((GOALS.startBodyFat - curBF) / (GOALS.startBodyFat - GOALS.bodyFatTarget)) * 100), 100
   ))
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-      <h3 className="font-semibold text-gray-700 mb-3">Body Composition</h3>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-semibold text-gray-700">Body Composition</h3>
+        <span className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium">Lean Bulk</span>
+      </div>
       {[
-        { label: 'Weight', cur: `${curWeight} kg`, goal: `${GOALS.weightTarget} kg`, pct: weightPct, color: '#6366f1' },
-        { label: 'Body Fat', cur: `${curBF}%`, goal: `${GOALS.bodyFatTarget}%`, pct: bfPct, color: '#ec4899' },
+        { label: 'Weight', cur: `${curWeight} kg`, goal: `${GOALS.weightTarget} kg`, pct: weightPct, color: '#6366f1', note: `+${(GOALS.weightTarget - GOALS.startWeight)} kg target` },
+        { label: 'Body Fat', cur: `${curBF}%`, goal: `${GOALS.bodyFatTarget}%`, pct: bfPct, color: '#ec4899', note: 'maintain / recomp' },
       ].map(m => (
         <div key={m.label} className="mb-3">
           <div className="flex justify-between text-sm mb-1.5">
@@ -417,7 +471,10 @@ function BodyComp({ logs }) {
             <div className="h-full rounded-full transition-all duration-700"
               style={{ width: `${m.pct}%`, background: m.color }} />
           </div>
-          <div className="text-right text-xs text-gray-400 mt-0.5">{m.pct}% there</div>
+          <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+            <span>{m.note}</span>
+            <span>{m.pct}% there</span>
+          </div>
         </div>
       ))}
     </div>

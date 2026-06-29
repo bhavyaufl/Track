@@ -264,22 +264,51 @@ function ScreenTime({ logs }) {
 }
 
 function WeightChart({ logs }) {
-  const data = logs.filter(l => l.weight).slice(0, 30).reverse()
-    .map(l => ({ date: l.date?.slice(5), weight: Number(l.weight) }))
+  const weightLogs = logs.filter(l => l.weight).reverse()
+  const actualMap  = Object.fromEntries(weightLogs.map(l => [l.date.slice(5), Number(l.weight)]))
 
-  if (!data.length) return (
+  const start = new Date(GOALS.startDate)
+  const end   = new Date(GOALS.endDate)
+  const totalDays = (end - start) / 86400000
+
+  const pts = []
+  let cur = new Date(start)
+  while (cur <= end) {
+    const day   = (cur - start) / 86400000
+    const ideal = Number((GOALS.startWeight + (day / totalDays) * (GOALS.weightTarget - GOALS.startWeight)).toFixed(1))
+    const dateKey = cur.toISOString().split('T')[0].slice(5)
+    pts.push({ date: dateKey, ideal, actual: actualMap[dateKey] ?? null })
+    cur.setDate(cur.getDate() + 7)
+  }
+
+  if (!weightLogs.length && pts.every(p => p.actual === null)) return (
     <div className="text-center py-10 text-gray-400 text-sm">No weight data yet.</div>
   )
+
+  const allWeights = weightLogs.map(l => l.weight)
+  const yMin = Math.min(GOALS.startWeight - 1, ...allWeights)
+  const yMax = Math.max(GOALS.weightTarget + 1, ...allWeights)
+
   return (
-    <ResponsiveContainer width="100%" height={180}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-        <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-        <YAxis stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} domain={['dataMin - 1', 'dataMax + 1']} />
-        <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
-        <Line dataKey="weight" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} name="kg" />
-      </LineChart>
-    </ResponsiveContainer>
+    <>
+      <ResponsiveContainer width="100%" height={180}>
+        <LineChart data={pts}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+          <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }}
+            domain={[yMin, yMax]} width={32} />
+          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+            formatter={(v, name) => [`${v} kg`, name === 'ideal' ? 'Ideal' : 'Actual']} />
+          <Line dataKey="ideal" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 3" dot={false} connectNulls name="ideal" />
+          <Line dataKey="actual" stroke="#6366f1" strokeWidth={2.5}
+            dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} connectNulls={false} name="actual" />
+        </LineChart>
+      </ResponsiveContainer>
+      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-indigo-500 inline-block rounded" /> Actual</span>
+        <span className="flex items-center gap-1"><span className="w-4 border-t border-dashed border-gray-400 inline-block" /> Ideal (91→93 kg)</span>
+      </div>
+    </>
   )
 }
 

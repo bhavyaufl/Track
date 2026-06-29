@@ -230,8 +230,11 @@ export default function Calories({ todayLog, logs, onRefresh }) {
   const onTarget = cal >= GOALS.calories.target
   const pct     = Math.min((cal / GOALS.calories.target) * 100, 100)
 
-  const totalDeficit = logs.reduce((sum, l) => l.calories ? sum + (GOALS.calories.target - l.calories) : sum, 0)
-  const kgLost = Math.max((totalDeficit / 7700).toFixed(2), 0)
+  const loggedDays   = logs.filter(l => l.calories > 0).length
+  const totalCals    = logs.reduce((s, l) => s + (l.calories || 0), 0)
+  const avgCals      = loggedDays > 0 ? Math.round(totalCals / loggedDays) : 0
+  const totalSurplus = logs.reduce((s, l) => l.calories ? s + (l.calories - GOALS.calories.target) : s, 0)
+  const daysOnTarget = logs.filter(l => l.calories >= GOALS.calories.target).length
 
   const editingMealMeta = MEAL_LIST.find(m => m.key === editingMeal)
 
@@ -303,17 +306,27 @@ export default function Calories({ todayLog, logs, onRefresh }) {
         <SevenDayChart logs={logs} />
       </div>
 
-      {/* Deficit */}
+      {/* Surplus / stats */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-        <h3 className="text-gray-700 font-semibold text-sm mb-3">Cumulative Deficit</h3>
+        <h3 className="text-gray-700 font-semibold text-sm mb-3">Calorie Summary</h3>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-indigo-50 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-indigo-600">{totalDeficit > 0 ? '+' : ''}{totalDeficit.toLocaleString()}</div>
-            <div className="text-gray-400 text-xs mt-0.5">kcal deficit</div>
+            <div className={`text-xl font-bold ${totalSurplus >= 0 ? 'text-indigo-600' : 'text-red-400'}`}>
+              {totalSurplus >= 0 ? '+' : ''}{totalSurplus.toLocaleString()}
+            </div>
+            <div className="text-gray-400 text-xs mt-0.5">kcal {totalSurplus >= 0 ? 'surplus' : 'deficit'}</div>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3 text-center">
+            <div className="text-xl font-bold text-gray-700">{avgCals.toLocaleString()}</div>
+            <div className="text-gray-400 text-xs mt-0.5">avg kcal / day</div>
           </div>
           <div className="bg-emerald-50 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-emerald-600">~{kgLost} kg</div>
-            <div className="text-gray-400 text-xs mt-0.5">estimated fat lost</div>
+            <div className="text-xl font-bold text-emerald-600">{daysOnTarget}</div>
+            <div className="text-gray-400 text-xs mt-0.5">days on target</div>
+          </div>
+          <div className="bg-amber-50 rounded-xl p-3 text-center">
+            <div className="text-xl font-bold text-amber-600">{loggedDays}</div>
+            <div className="text-gray-400 text-xs mt-0.5">days logged</div>
           </div>
         </div>
       </div>
