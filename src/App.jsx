@@ -58,6 +58,15 @@ export default function App() {
   const badges = useAchievements()
   const { log: todayLog, loading: todayLoading } = useTodayLog(refreshKey)
 
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('darkMode')
+    return saved ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('darkMode', dark)
+  }, [dark])
+
   if (logsLoading || levelsLoading || todayLoading) return <LoadingScreen />
 
   const totalXP = logs.reduce((sum, l) => sum + (l.xp_earned || 0), 0)
@@ -66,10 +75,10 @@ export default function App() {
   const latestWeight = logs.find(l => l.weight)?.weight
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#f8f9fc' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--c-page)' }}>
       {/* ── Header ── fixed 52px */}
-      <header className="bg-white fixed top-0 left-0 right-0 z-20 flex items-center"
-        style={{ height: 52, borderBottom: '1px solid #e8eaed', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
+      <header className="fixed top-0 left-0 right-0 z-20 flex items-center"
+        style={{ height: 52, background: 'var(--c-header)', borderBottom: '1px solid var(--c-border)', boxShadow: '0 1px 8px var(--c-shadow)' }}>
         <div className="max-w-3xl mx-auto w-full px-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-black"
@@ -100,13 +109,18 @@ export default function App() {
               style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
               <div className="text-xs font-bold text-white">⚡{totalXP.toLocaleString()}</div>
             </div>
+            <button onClick={() => setDark(d => !d)}
+              className="w-7 h-7 rounded-xl flex items-center justify-center bg-gray-50 border border-gray-100 text-sm transition-colors hover:bg-gray-100"
+              title="Toggle dark mode">
+              {dark ? '☀️' : '🌙'}
+            </button>
           </div>
         </div>
       </header>
 
       {/* ── Tab bar ── fixed 40px directly below header */}
-      <nav className="bg-white fixed left-0 right-0 z-10 overflow-x-auto"
-        style={{ top: 52, height: 40, borderBottom: '1px solid #e8eaed', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      <nav className="fixed left-0 right-0 z-10 overflow-x-auto"
+        style={{ top: 52, height: 40, background: 'var(--c-header)', borderBottom: '1px solid var(--c-border)', boxShadow: '0 2px 8px var(--c-shadow)' }}>
         <div className="max-w-3xl mx-auto flex h-full min-w-max">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
