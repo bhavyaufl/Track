@@ -4,9 +4,9 @@ export const GOALS = {
   carbs: 100,
   fat: 50,
   steps: 10000,
-  weightTarget: 82,      // cut target ~9 kg loss by Aug 9
-  bodyFatTarget: 12,     // cut to 12% BF
-  startWeight: 91,
+  weightTarget: 77,      // 67.5 kg lean mass ÷ 0.88 = 76.7 kg at 12% BF
+  bodyFatTarget: 12,
+  startWeight: 90,
   startBodyFat: 25,
   dailyBudget: 1000,
   startDate: '2026-06-30',
