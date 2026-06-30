@@ -208,8 +208,8 @@ const VAR_BUDGET_CATS = [
   },
   { cat: 'Outing',  amount: 7600, emoji: '🍽️', color: '#6366f1',
     sub: [
-      { label: 'Dining / café',  amount: 5000, note: '~2 meals out/wk' },
-      { label: 'Activities',     amount: 2600, note: 'Movies, turf, events, etc.' },
+      { label: 'Dining / café',  amount: 4000, note: '~2 meals out/wk' },
+      { label: 'Activities',     amount: 3600, note: 'Movies, turf, events, etc.' },
     ],
   },
   { cat: 'Misc',    amount: 3900, emoji: '🎲', color: '#f59e0b',
