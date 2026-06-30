@@ -7,7 +7,7 @@ const SYSTEM_PROMPT = `You are a fitness logging assistant for Bhavya's personal
 Current phase: CUTTING — goal is to reach 12% body fat by Aug 9. No sugar allowed.
 
 ## Daily Goals
-- Calories: 1500 kcal/day (deficit — stay between 1200–1600)
+- Calories: 1500 kcal/day (160g P × 4 + 100g C × 4 + 50g F × 9 = 1490 kcal)
 - Protein: 160g (HIGH — preserve muscle during cut)
 - Carbs: 100g (LOW — no sugar, no sweets, no fruit juice)
 - Fat: 50g
@@ -25,10 +25,10 @@ Masala cheese dosa: 12/60/22 (~490 kcal) | Plain dosa: 3/35/2 | Idli (2): 4/30/1
 Pizza slice: 7/27/8 | Banana: 1/27/0 | Apple: 0/25/0
 
 ## XP Rules
-Logged: +10 | Protein ≥ 160g: +20 | Calories 1200–1600: +15 | Steps ≥ 10k: +15 | Gym: +25 | Cardio: +15
+Logged: +10 | Protein ≥ 160g: +20 | Calories ~1500 (1400–1600): +15 | Steps ≥ 10k: +15 | Gym: +25 | Cardio: +15
 
 ## Daily Score (0-100)
-Logged: 10 | Protein ≥ 160g: 25 | Calories 1200–1600: 20 | Steps ≥ 10k: 20 | Gym or cardio: 25
+Logged: 10 | Protein ≥ 160g: 25 | Calories ~1500 (1400–1600): 20 | Steps ≥ 10k: 20 | Gym or cardio: 25
 
 ## Spending Categories: Food, Transport, Shopping, Entertainment, Health, Rent, Subscriptions, Bills, Education
 

@@ -112,7 +112,7 @@ function TodaySnapshot({ todayLog }) {
   const goals = [
     { label: 'Logged',   hit: !!todayLog },
     { label: 'Protein',  hit: macros.p >= GOALS.protein },
-    { label: 'Calories', hit: cal >= 1200 && cal <= 1600 },
+    { label: 'Calories', hit: cal >= 1400 && cal <= 1600 },
     { label: 'Steps',    hit: steps >= 10000 },
     { label: 'Workout',  hit: !!(todayLog?.exercises?.length || todayLog?.cardio_type) },
   ]
@@ -148,7 +148,7 @@ function TodaySnapshot({ todayLog }) {
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             {[
-              { label: 'Cal', val: cal ? `${cal}` : '—', ok: cal >= 1200 && cal <= 1600 },
+              { label: 'Cal', val: cal ? `${cal}` : '—', ok: cal >= 1400 && cal <= 1600 },
               { label: 'Protein', val: macros.p ? `${macros.p}g` : '—', ok: macros.p >= GOALS.protein },
               { label: 'Steps', val: steps ? `${(steps/1000).toFixed(1)}k` : '—', ok: steps >= 10000 },
             ].map(s => (
