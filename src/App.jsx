@@ -18,12 +18,14 @@ import Finance from './components/tabs/Finance'
 import Calendar from './components/tabs/Calendar'
 import History from './components/tabs/History'
 import Log from './components/tabs/Log'
+import Food from './components/tabs/Food'
 import clsx from 'clsx'
 
 const TABS = [
   { id: 'log',       emoji: '💬', label: 'Log' },
   { id: 'dashboard', emoji: '🏠', label: 'Dashboard' },
   { id: 'today',     emoji: '📊', label: 'Today' },
+  { id: 'food',      emoji: '🥗', label: 'Food' },
   { id: 'fitness',   emoji: '💪', label: 'Fitness' },
   { id: 'calories',  emoji: '🔥', label: 'Calories' },
   { id: 'finance',   emoji: '💰', label: 'Finance' },
@@ -131,6 +133,7 @@ export default function App() {
           </div>
         )}
         {activeTab === 'log'       && <Log onLogged={refresh} />}
+        {activeTab === 'food'      && <Food />}
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
         {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} onRefresh={refresh} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}
