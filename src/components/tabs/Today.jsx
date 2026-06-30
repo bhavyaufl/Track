@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GOALS } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
+import { WEEKLY_PLAN } from '../../lib/mealPlan'
 
 function ScoreStrip({ log, onEdit }) {
   const score = log?.daily_score || 0
@@ -246,11 +247,64 @@ function MealEditSheet({ meal, index, allMeals, log, onClose, onSaved }) {
   )
 }
 
-function Meals({ log, onRefresh }) {
-  const [editingIndex, setEditingIndex] = useState(null)
-  const meals = log?.meals || []
+function getMealStatus(planned, logged) {
+  if (!logged) return 'pending'
+  const lp  = logged.macros?.p || 0
+  const lf  = logged.macros?.f || 0
+  const lc  = logged.macros?.c || 0
+  const lkc = logged.calories ?? (lp * 4 + lc * 4 + lf * 9)
+  const proteinOk = lp >= planned.macros.p * 0.75
+  const fatOk     = lf <= planned.macros.f * 1.3
+  const calOk     = lkc <= planned.cal * 1.25
+  if (proteinOk && fatOk && calOk) return 'good'
+  const issues = []
+  if (!proteinOk) issues.push(`need +${Math.round(planned.macros.p - lp)}g protein`)
+  if (!fatOk)     issues.push(`fat over by ${Math.round(lf - planned.macros.f)}g`)
+  if (!calOk)     issues.push(`${Math.round(lkc - planned.cal)} kcal over`)
+  return { bad: true, issues, lp, lc, lf, lkc }
+}
 
-  // Legacy fallback for older logs
+function ActionMessage({ plan, log }) {
+  const loggedMeals = log?.meals || []
+  const totalP   = loggedMeals.reduce((s, m) => s + (m.macros?.p || 0), 0)
+  const totalCal = loggedMeals.reduce((s, m) => s + (m.calories ?? ((m.macros?.p||0)*4 + (m.macros?.c||0)*4 + (m.macros?.f||0)*9)), 0)
+  const needP    = GOALS.protein - totalP
+  const needCal  = GOALS.calories.target - totalCal
+
+  const nextMeal = plan.meals.find(pm => !loggedMeals.find(m => m.label === pm.label))
+
+  let msg, clr
+  if (!loggedMeals.length) {
+    msg = `Nothing logged yet — have ${plan.meals[0].name} at ${plan.meals[0].time}`
+    clr = 'text-gray-500'
+  } else if (nextMeal) {
+    const parts = [`Next: ${nextMeal.name} at ${nextMeal.time}`]
+    if (needP > 20) parts.push(`${needP}g protein still needed`)
+    if (needCal > 200) parts.push(`${needCal} kcal left`)
+    msg = parts.join(' · ')
+    clr = 'text-indigo-600'
+  } else if (needP > 25) {
+    msg = `All meals done but ${needP}g protein short — add a whey shake`
+    clr = 'text-orange-500'
+  } else if (totalCal > GOALS.calories.target + 200) {
+    msg = `Over by ${totalCal - GOALS.calories.target} kcal today — skip any extra snacks`
+    clr = 'text-red-500'
+  } else {
+    msg = 'All meals done — protein and calories on track'
+    clr = 'text-emerald-600'
+  }
+
+  return (
+    <div className={`text-xs font-semibold ${clr} px-1 pb-0.5`}>{msg}</div>
+  )
+}
+
+function TodayMealPlan({ log, dayIdx, onRefresh }) {
+  const [editingIndex, setEditingIndex] = useState(null)
+  const plan = WEEKLY_PLAN[dayIdx]
+  const loggedMeals = log?.meals || []
+
+  // Legacy fallback rows (old format before meal plan migration)
   const legacy = [
     { label: 'Breakfast', icon: '🌅', key: 'breakfast' },
     { label: 'Lunch',     icon: '☀️', key: 'lunch' },
@@ -258,63 +312,118 @@ function Meals({ log, onRefresh }) {
     { label: 'Snacks',    icon: '🍿', key: 'snacks' },
   ].filter(m => log?.[m.key])
 
-  if (!meals.length && !legacy.length) return null
-
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-50">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Meals</span>
-          {meals.length > 0 && <span className="text-xs text-gray-300">tap to edit</span>}
+          <span className="text-xs text-gray-300">
+            {loggedMeals.length}/{plan.meals.length} logged
+          </span>
         </div>
+
+        <div className="px-3 pt-2 pb-1">
+          <ActionMessage plan={plan} log={log} />
+        </div>
+
         <div className="divide-y divide-gray-50">
-          {meals.length > 0
-            ? meals.map((m, i) => {
-                const kcal = m.macros ? m.macros.p*4 + m.macros.c*4 + m.macros.f*9 : null
-                return (
-                  <button key={i} onClick={() => setEditingIndex(i)}
-                    className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-gray-50 transition-colors">
-                    <div className="shrink-0 pt-0.5">
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                        {m.label || `Meal ${i+1}`}
+          {plan.meals.map((pm, i) => {
+            const logged = loggedMeals.find(m => m.label === pm.label)
+            const loggedIdx = loggedMeals.findIndex(m => m.label === pm.label)
+            const status = getMealStatus(pm, logged)
+            const isPending = status === 'pending'
+            const isGood    = status === 'good'
+            const isBad     = typeof status === 'object'
+
+            return (
+              <button key={i}
+                onClick={() => logged ? setEditingIndex(loggedIdx) : null}
+                className={`w-full text-left px-3 py-2.5 transition-colors ${
+                  isPending ? 'opacity-50 cursor-default' :
+                  isGood    ? 'hover:bg-emerald-50/40' :
+                              'hover:bg-red-50/40'
+                }`}>
+                <div className="flex items-center gap-2">
+                  {/* status dot */}
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${
+                    isPending ? 'bg-gray-200' :
+                    isGood    ? 'bg-emerald-400' :
+                                'bg-red-400'
+                  }`} />
+
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded border ${
+                    isPending ? 'text-gray-400 bg-gray-50 border-gray-100' :
+                    isGood    ? 'text-emerald-600 bg-emerald-50 border-emerald-100' :
+                                'text-red-500 bg-red-50 border-red-100'
+                  }`}>
+                    {pm.label}
+                  </span>
+
+                  <span className={`text-xs ${isPending ? 'text-gray-300' : 'text-gray-400'}`}>{pm.time}</span>
+
+                  {/* status tag */}
+                  <span className={`ml-auto text-xs font-semibold shrink-0 ${
+                    isPending ? 'text-gray-300' :
+                    isGood    ? 'text-emerald-500' :
+                                'text-red-400'
+                  }`}>
+                    {isPending ? 'Not logged' : isGood ? '✓ On track' : `⚠ ${isBad.issues?.[0] || 'Check'}`}
+                  </span>
+                </div>
+
+                {/* meal text */}
+                <div className={`text-xs mt-1 ml-4 ${isPending ? 'text-gray-300' : isGood ? 'text-gray-600' : 'text-gray-600'}`}>
+                  {logged?.text || pm.name}
+                </div>
+
+                {/* macros */}
+                <div className="flex gap-2 text-xs ml-4 mt-0.5">
+                  {logged ? (
+                    <>
+                      <span className={`font-semibold ${(logged.macros?.p||0) >= pm.macros.p * 0.75 ? 'text-indigo-500' : 'text-red-400'}`}>
+                        {logged.macros?.p||0}g P
                       </span>
-                      {m.time && <div className="text-xs text-gray-400 text-center mt-0.5">{m.time}</div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xs text-gray-600">{m.text}</span>
-                        {kcal ? <span className="text-xs text-gray-400 shrink-0 ml-2">{kcal}kcal</span> : null}
-                      </div>
-                    </div>
-                    <span className="text-gray-300 text-xs shrink-0 mt-0.5">✏️</span>
-                  </button>
-                )
-              })
-            : legacy.map(m => {
-                const mx   = log.meal_macros?.[m.key]
-                const kcal = mx ? mx.p*4 + mx.c*4 + mx.f*9 : null
-                return (
-                  <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
-                    <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-xs font-medium text-gray-500">{m.label}</span>
-                        {kcal && <span className="text-xs text-gray-400 shrink-0">{kcal}kcal</span>}
-                      </div>
-                      <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
-                    </div>
-                  </div>
-                )
-              })
-          }
+                      <span className="text-amber-400">{logged.macros?.c||0}g C</span>
+                      <span className={`font-semibold ${(logged.macros?.f||0) <= pm.macros.f * 1.3 ? 'text-pink-400' : 'text-red-400'}`}>
+                        {logged.macros?.f||0}g F
+                      </span>
+                      <span className="text-gray-300 ml-auto">
+                        {logged.calories ?? ((logged.macros?.p||0)*4 + (logged.macros?.c||0)*4 + (logged.macros?.f||0)*9)} kcal
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-gray-200">{pm.macros.p}g P</span>
+                      <span className="text-gray-200">{pm.macros.c}g C</span>
+                      <span className="text-gray-200">{pm.macros.f}g F</span>
+                      <span className="text-gray-200 ml-auto">{pm.cal} kcal</span>
+                    </>
+                  )}
+                </div>
+
+                {logged && <div className="text-xs text-gray-300 ml-4 mt-0.5">tap to edit</div>}
+              </button>
+            )
+          })}
+
+          {/* Legacy entries */}
+          {legacy.map(m => (
+            <div key={m.key} className="flex items-start gap-2 px-3 py-1.5">
+              <span className="text-sm shrink-0 mt-0.5">{m.icon}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-gray-500">{m.label}</span>
+                <div className="text-xs text-gray-600 truncate">{log[m.key]}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {editingIndex !== null && meals[editingIndex] && (
+      {editingIndex !== null && loggedMeals[editingIndex] && (
         <MealEditSheet
-          meal={meals[editingIndex]}
+          meal={loggedMeals[editingIndex]}
           index={editingIndex}
-          allMeals={meals}
+          allMeals={loggedMeals}
           log={log}
           onClose={() => setEditingIndex(null)}
           onSaved={() => { setEditingIndex(null); onRefresh?.() }}
@@ -539,7 +648,7 @@ function EditLogModal({ log, onClose, onSaved }) {
 
 // ─── Day View ────────────────────────────────────────────────────────────────
 
-function DayView({ log, onRefresh }) {
+function DayView({ log, onRefresh, dayIdx }) {
   const [editing, setEditing] = useState(false)
   const macros = log?.macros || { p: 0, c: 0, f: 0 }
   const cal    = log?.calories || 0
@@ -561,7 +670,7 @@ function DayView({ log, onRefresh }) {
 
       <StepsBar steps={steps} />
       <GoalList log={log} />
-      <Meals log={log} onRefresh={onRefresh} />
+      <TodayMealPlan log={log} dayIdx={dayIdx} onRefresh={onRefresh} />
       <SpendingView log={log} />
 
       {log?.badges_unlocked?.length > 0 && (
@@ -602,8 +711,8 @@ export default function Today({ log, yesterdayLog, onRefresh }) {
         ))}
       </div>
 
-      {tab === 'today'     && <DayView log={log}          onRefresh={onRefresh} />}
-      {tab === 'yesterday' && <DayView log={yesterdayLog} onRefresh={onRefresh} />}
+      {tab === 'today'     && <DayView log={log}          onRefresh={onRefresh} dayIdx={new Date().getDay()} />}
+      {tab === 'yesterday' && <DayView log={yesterdayLog} onRefresh={onRefresh} dayIdx={(new Date().getDay() + 6) % 7} />}
     </div>
   )
 }
