@@ -2,21 +2,23 @@ import { useState } from 'react'
 import { useDark } from '../../lib/DarkContext'
 import { WEEKLY_PLAN, DAY_NAMES } from '../../lib/mealPlan'
 
+// Prices verified by user. Quantities reflect home cooking only —
+// Mon–Sat Meal 1 is office canteen (mix & match, ~₹75/meal).
 const GROCERY_LIST = [
   { category: 'Protein', emoji: '🥩', items: [
-    { item: 'Chicken breast',      qty: '1.5 kg',       price: 525,  note: 'Grill all on Sunday for the week' },
-    { item: 'Eggs',                qty: '30 (2.5 doz)', price: 225,  note: 'Boil 10 on Sunday; keeps 5 days' },
-    { item: 'Greek yogurt',        qty: '800g',          price: 360,  note: '4 × 200g packs (Epigamia etc.)' },
-    { item: 'Whey protein',        qty: '4 scoops',      price: 0,    note: 'From your tub — already owned' },
-    { item: 'Protein shake (RTD)', qty: '3 bottles',     price: 300,  note: 'Pre-made, for on-the-go' },
+    { item: 'Chicken breast',      qty: '1.2 kg',        price: 408, note: '₹340/kg · home dinners only (canteen covers weekday Meal 1)' },
+    { item: 'Eggs',                qty: '24 (4 × 6 pcs)',price: 240, note: '₹60/6 pcs · home cooking; batch boil 8 on Sunday' },
+    { item: 'Greek yogurt (Amul)', qty: '~800g',          price: 330, note: '₹284/700g pack · buy ~1.2 packs per week' },
+    { item: 'Whey protein',        qty: '4 scoops',       price: 0,   note: 'From your tub — already owned' },
+    { item: 'Protein shake (Amul)',qty: '3 bottles',      price: 150, note: '₹50/bottle · Meal 2 on Sun, Tue, Fri' },
   ]},
   { category: 'Carbs', emoji: '🍚', items: [
-    { item: 'Rice',              qty: '600g',  price: 45,  note: 'Cook 6 cups on Sunday' },
-    { item: 'Roti',              qty: '14',    price: 100, note: 'From store; refrigerate' },
-    { item: 'Dal (toor/masoor)', qty: '100g',  price: 15,  note: 'Pressure cook 1 batch on Sunday' },
+    { item: 'Rice',              qty: '400g',  price: 16,  note: '₹40/kg · home dinners only (4 meals/week)' },
+    { item: 'Roti',              qty: '10',    price: 70,  note: '~₹7 each · home dinners + Sunday Meal 1' },
+    { item: 'Dal (toor/masoor)', qty: '50g',   price: 8,   note: 'Sunday Meal 1 only — small batch' },
   ]},
   { category: 'Drinks', emoji: '🥤', items: [
-    { item: 'Diet Coke', qty: '7 cans', price: 385, note: '1 with dinner — zero kcal ✓' },
+    { item: 'Diet Coke', qty: '7 cans', price: 280, note: '₹40/can · 1 with dinner every night — zero kcal ✓' },
   ]},
   { category: 'Pantry', emoji: '🌿', items: [
     { item: 'Lemons',                qty: '5',         price: 25,  note: '' },

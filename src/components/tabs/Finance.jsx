@@ -194,12 +194,31 @@ function SavingsProjection({ logs }) {
 }
 
 // ── Variable budget category breakdown ──────────────────────────────────────
-// Grocery = weekly meal plan ₹2,110 × 4 weeks ≈ ₹8,440 → rounded ₹8,500
+// Food = home groceries ~₹1,660/wk × 4 = ₹6,640
+//      + office canteen 6 days × ₹75 × 4 wk = ₹1,800  → total ₹8,440 ≈ ₹8,500
+// Verified prices: chicken ₹340/kg, eggs ₹60/6, Greek yogurt ₹284/700g,
+//   Amul shake ₹50, Diet Coke ₹40/can, canteen meal ~₹75 (mix & match)
 // Total must equal GOALS.monthlyBudget (₹20,000)
 const VAR_BUDGET_CATS = [
-  { cat: 'Groceries', amount: 8500, note: 'Meal plan · ~₹2,110/wk × 4', emoji: '🛒', color: '#10b981' },
-  { cat: 'Outing',    amount: 7500, note: '~2 outings/wk · food + transport', emoji: '🍽️', color: '#6366f1' },
-  { cat: 'Misc',      amount: 4000, note: 'Transport, personal care, sundry', emoji: '🎲', color: '#f59e0b' },
+  { cat: 'Food',    amount: 8500, emoji: '🛒', color: '#10b981',
+    sub: [
+      { label: 'Home groceries', amount: 6600, note: '~₹1,660/wk · chicken, eggs, yogurt, shakes, Diet Coke, pantry' },
+      { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match, ~₹75 budget per meal' },
+    ],
+  },
+  { cat: 'Outing',  amount: 7500, emoji: '🍽️', color: '#6366f1',
+    sub: [
+      { label: 'Dining / café',  amount: 5000, note: '~2 outings/wk at ₹500–800 avg' },
+      { label: 'Transport',      amount: 2500, note: 'Uber/auto for outings' },
+    ],
+  },
+  { cat: 'Misc',    amount: 4000, emoji: '🎲', color: '#f59e0b',
+    sub: [
+      { label: 'Daily transport', amount: 2000, note: 'Commute + errands' },
+      { label: 'Personal care',   amount: 1000, note: 'Haircut, toiletries' },
+      { label: 'Sundry',          amount: 1000, note: 'Anything else' },
+    ],
+  },
 ]
 
 // ── Balance / spend projection ───────────────────────────────────────────────
@@ -360,23 +379,33 @@ function BalanceProjection({ logs }) {
         {VAR_BUDGET_CATS.map(c => {
           const pct = Math.round(c.amount / GOALS.monthlyBudget * 100)
           return (
-            <div key={c.cat} className="mb-3 last:mb-0">
+            <div key={c.cat} className="mb-4 last:mb-0">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-base">{c.emoji}</span>
-                  <div>
-                    <span className="text-sm font-semibold text-gray-700">{c.cat}</span>
-                    <span className="text-xs text-gray-400 ml-2">{c.note}</span>
-                  </div>
+                  <span className="text-sm font-bold text-gray-700">{c.cat}</span>
                 </div>
                 <div className="text-right shrink-0 ml-2">
                   <span className="text-sm font-bold text-gray-700">₹{c.amount.toLocaleString()}</span>
                   <span className="text-xs text-gray-400 ml-1">{pct}%</span>
                 </div>
               </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
                 <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color }} />
               </div>
+              {c.sub && (
+                <div className="space-y-1 pl-6">
+                  {c.sub.map(s => (
+                    <div key={s.label} className="flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-semibold text-gray-500">{s.label}</span>
+                        <span className="text-xs text-gray-300 ml-1.5">{s.note}</span>
+                      </div>
+                      <span className="text-xs font-bold text-gray-400 shrink-0 ml-2">₹{s.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
