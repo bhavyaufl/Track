@@ -39,10 +39,10 @@ function HeroBanner({ logs, levels, todayLog }) {
   const totalXP = logs.reduce((s, l) => s + (l.xp_earned || 0), 0)
   const score = todayLog?.daily_score || 0
 
-  // Lean bulk: progress = how far from start toward target weight
-  const weightPct = Math.min(
-    Math.round(((curWeight - GOALS.startWeight) / (GOALS.weightTarget - GOALS.startWeight)) * 100), 100
-  )
+  // Cut: progress = how much weight lost toward target (going DOWN)
+  const weightPct = Math.max(0, Math.min(
+    Math.round(((GOALS.startWeight - curWeight) / (GOALS.startWeight - GOALS.weightTarget)) * 100), 100
+  ))
 
   const circ = 2 * Math.PI * 44
   const offset = circ * (1 - power / 100)
@@ -92,7 +92,7 @@ function HeroBanner({ logs, levels, todayLog }) {
         <div className="flex justify-between text-xs text-white/50 mb-1">
           <span>{GOALS.startWeight} kg</span>
           <span>{weightPct}% to goal</span>
-          <span>{GOALS.weightTarget} kg ↑</span>
+          <span>{GOALS.weightTarget} kg ↓</span>
         </div>
         <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
           <div className="h-full bg-white rounded-full transition-all duration-700"
@@ -112,7 +112,7 @@ function TodaySnapshot({ todayLog }) {
   const goals = [
     { label: 'Logged',   hit: !!todayLog },
     { label: 'Protein',  hit: macros.p >= GOALS.protein },
-    { label: 'Calories', hit: cal >= GOALS.calories.target },
+    { label: 'Calories', hit: cal >= 1200 && cal <= 1600 },
     { label: 'Steps',    hit: steps >= 10000 },
     { label: 'Workout',  hit: !!(todayLog?.exercises?.length || todayLog?.cardio_type) },
   ]
@@ -148,7 +148,7 @@ function TodaySnapshot({ todayLog }) {
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             {[
-              { label: 'Cal', val: cal ? `${cal}` : '—', ok: cal >= GOALS.calories.target },
+              { label: 'Cal', val: cal ? `${cal}` : '—', ok: cal >= 1200 && cal <= 1600 },
               { label: 'Protein', val: macros.p ? `${macros.p}g` : '—', ok: macros.p >= GOALS.protein },
               { label: 'Steps', val: steps ? `${(steps/1000).toFixed(1)}k` : '—', ok: steps >= 10000 },
             ].map(s => (
@@ -238,7 +238,7 @@ function WeightTrend({ logs }) {
       <div className="flex justify-between items-center mb-1">
         <div>
           <h3 className="font-semibold text-gray-700">Weight</h3>
-          <div className="text-xs text-gray-400 mt-0.5">Lean bulk · target {GOALS.weightTarget} kg</div>
+          <div className="text-xs text-gray-400 mt-0.5">🔥 Cut · target {GOALS.weightTarget} kg ↓</div>
         </div>
         <div className="text-right">
           <div className="text-lg font-black text-indigo-600">{latest} kg</div>
@@ -431,26 +431,30 @@ function RecentWorkouts({ logs }) {
 
 function BodyComp({ logs }) {
   const curWeight = logs.find(l => l.weight)?.weight || GOALS.startWeight
-  const curBF = logs.find(l => l.body_fat)?.body_fat || GOALS.startBodyFat
+  const curBF     = logs.find(l => l.body_fat)?.body_fat || GOALS.startBodyFat
 
-  // Lean bulk: weight should go UP toward target
+  // Cut: weight goes DOWN — progress = how far from start toward target
   const weightPct = Math.max(0, Math.min(
-    Math.round(((curWeight - GOALS.startWeight) / (GOALS.weightTarget - GOALS.startWeight)) * 100), 100
+    Math.round(((GOALS.startWeight - curWeight) / (GOALS.startWeight - GOALS.weightTarget)) * 100), 100
   ))
-  // BF: should stay same or slightly improve (recomp)
+  // BF: drops from 25% → 12%
   const bfPct = Math.max(0, Math.min(
     Math.round(((GOALS.startBodyFat - curBF) / (GOALS.startBodyFat - GOALS.bodyFatTarget)) * 100), 100
   ))
+  const weightLost = (GOALS.startWeight - curWeight).toFixed(1)
+  const bfLost     = (GOALS.startBodyFat - curBF).toFixed(1)
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-semibold text-gray-700">Body Composition</h3>
-        <span className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium">Lean Bulk</span>
+        <span className="text-xs bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full font-medium border border-orange-100">🔥 Cut</span>
       </div>
       {[
-        { label: 'Weight', cur: `${curWeight} kg`, goal: `${GOALS.weightTarget} kg`, pct: weightPct, color: '#6366f1', note: `+${(GOALS.weightTarget - GOALS.startWeight)} kg target` },
-        { label: 'Body Fat', cur: `${curBF}%`, goal: `${GOALS.bodyFatTarget}%`, pct: bfPct, color: '#ec4899', note: 'maintain / recomp' },
+        { label: 'Weight', cur: `${curWeight} kg`, goal: `${GOALS.weightTarget} kg`, pct: weightPct, color: '#6366f1',
+          note: weightLost > 0 ? `−${weightLost} kg lost` : `${Math.abs(GOALS.startWeight - GOALS.weightTarget)} kg to lose` },
+        { label: 'Body Fat', cur: `${curBF}%`, goal: `${GOALS.bodyFatTarget}%`, pct: bfPct, color: '#ec4899',
+          note: bfLost > 0 ? `−${bfLost}% dropped` : `target: ${GOALS.bodyFatTarget}%` },
       ].map(m => (
         <div key={m.label} className="mb-3">
           <div className="flex justify-between text-sm mb-1.5">

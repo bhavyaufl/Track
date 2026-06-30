@@ -1,15 +1,15 @@
 export const GOALS = {
-  calories: { target: 3280 },
+  calories: { target: 1500 },
   protein: 160,
-  carbs: 480,
-  fat: 80,
+  carbs: 100,
+  fat: 50,
   steps: 10000,
-  weightTarget: 93,
-  bodyFatTarget: 20,
+  weightTarget: 82,      // cut target ~9 kg loss by Aug 9
+  bodyFatTarget: 12,     // cut to 12% BF
   startWeight: 91,
   startBodyFat: 25,
   dailyBudget: 1000,
-  startDate: '2026-06-08',
+  startDate: '2026-06-30',
   endDate: '2026-08-09',
 }
 
