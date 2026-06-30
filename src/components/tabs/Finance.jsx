@@ -203,20 +203,20 @@ const VAR_BUDGET_CATS = [
   { cat: 'Food',    amount: 8500, emoji: '🛒', color: '#10b981',
     sub: [
       { label: 'Home groceries', amount: 6600, note: '~₹1,660/wk · chicken, eggs, yogurt, shakes, Diet Coke, pantry' },
-      { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match, ~₹75 budget per meal' },
+      { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match' },
     ],
   },
-  { cat: 'Outing',  amount: 7500, emoji: '🍽️', color: '#6366f1',
+  { cat: 'Outing',  amount: 7600, emoji: '🍽️', color: '#6366f1',
     sub: [
-      { label: 'Dining / café',  amount: 5000, note: '~2 outings/wk at ₹500–800 avg' },
-      { label: 'Transport',      amount: 2500, note: 'Uber/auto for outings' },
+      { label: 'Dining / café',  amount: 5000, note: '~2 meals out/wk' },
+      { label: 'Activities',     amount: 2600, note: 'Movies, turf, events, etc.' },
     ],
   },
-  { cat: 'Misc',    amount: 4000, emoji: '🎲', color: '#f59e0b',
+  { cat: 'Misc',    amount: 3900, emoji: '🎲', color: '#f59e0b',
     sub: [
-      { label: 'Daily transport', amount: 2000, note: 'Commute + errands' },
-      { label: 'Personal care',   amount: 1000, note: 'Haircut, toiletries' },
-      { label: 'Sundry',          amount: 1000, note: 'Anything else' },
+      { label: 'Petrol',        amount: 1900, note: 'Bike fuel · covers commute + all errands' },
+      { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
+      { label: 'Sundry',        amount: 1000, note: 'Anything else' },
     ],
   },
 ]
