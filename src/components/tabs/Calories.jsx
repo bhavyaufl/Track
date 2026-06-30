@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
+import { useTooltipStyle } from '../../lib/DarkContext'
 
 function MacroBar({ label, value, target, color, emoji }) {
   const pct  = Math.min((value / target) * 100, 100)
@@ -39,6 +40,7 @@ function MacroBar({ label, value, target, color, emoji }) {
 }
 
 function SevenDayChart({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const data = logs.slice(0, 7).reverse().map(l => ({ date: l.date?.slice(5), calories: l.calories || 0 }))
   return (
     <ResponsiveContainer width="100%" height={120}>
@@ -46,7 +48,7 @@ function SevenDayChart({ logs }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
         <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
         <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 5000]} width={36} />
-        <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }} />
+        <Tooltip contentStyle={tooltipStyle} />
         <ReferenceLine y={GOALS.calories.target} stroke="#a5b4fc" strokeDasharray="4 2"
           label={{ value: `${GOALS.calories.target}`, fill: '#818cf8', fontSize: 9, position: 'right' }} />
         <Bar dataKey="calories" fill="#6366f1" radius={[4,4,0,0]} name="kcal" />

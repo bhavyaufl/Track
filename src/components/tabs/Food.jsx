@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDark } from '../../lib/DarkContext'
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -376,9 +377,12 @@ function GroceryList() {
 }
 
 function MealPrepBanner() {
+  const dark = useDark()
   return (
     <div className="rounded-2xl px-4 py-3.5 border border-emerald-200"
-      style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf9 100%)' }}>
+      style={{ background: dark
+        ? 'linear-gradient(135deg, #052819 0%, #062820 100%)'
+        : 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf9 100%)' }}>
       <div className="font-bold text-emerald-800 text-sm mb-2">🥡 Sunday Meal Prep = Stress-Free Week</div>
       <div className="space-y-1.5 text-xs text-emerald-700">
         <div className="flex gap-2"><span className="shrink-0 font-bold">1.</span>Grill 1.5 kg chicken breast in one batch — season with salt, pepper, jeera, lemon</div>

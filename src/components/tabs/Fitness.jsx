@@ -162,6 +162,7 @@ function BodyProgress() {
 }
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
+import { useTooltipStyle } from '../../lib/DarkContext'
 
 const SCREEN_TIME_GOAL = 180 // minutes — 3 hours
 
@@ -171,6 +172,7 @@ function fmt(mins) {
 }
 
 function ScreenTime({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const today = new Date().toISOString().split('T')[0]
   const todayLog = logs.find(l => l.date === today)
   const todayMins = todayLog?.screen_time || 0
@@ -242,7 +244,7 @@ function ScreenTime({ logs }) {
               <YAxis stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }}
                 tickFormatter={v => `${(v/60).toFixed(0)}h`} domain={[0, Math.max(SCREEN_TIME_GOAL * 1.5, 60)]} />
               <Tooltip
-                contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+                contentStyle={tooltipStyle}
                 formatter={v => [fmt(v), 'Screen time']} />
               <ReferenceLine y={SCREEN_TIME_GOAL} stroke="#a5b4fc" strokeDasharray="4 2"
                 label={{ value: '3h goal', fill: '#818cf8', fontSize: 10, position: 'right' }} />
@@ -264,6 +266,7 @@ function ScreenTime({ logs }) {
 }
 
 function WeightChart({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const weightLogs = logs.filter(l => l.weight).reverse()
   const actualMap  = Object.fromEntries(weightLogs.map(l => [l.date.slice(5), Number(l.weight)]))
 
@@ -297,7 +300,7 @@ function WeightChart({ logs }) {
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
           <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }}
             domain={[yMin, yMax]} width={32} />
-          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+          <Tooltip contentStyle={tooltipStyle}
             formatter={(v, name) => [`${v} kg`, name === 'ideal' ? 'Ideal' : 'Actual']} />
           <Line dataKey="ideal" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 3" dot={false} connectNulls name="ideal" />
           <Line dataKey="actual" stroke="#6366f1" strokeWidth={2.5}

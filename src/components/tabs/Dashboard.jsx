@@ -1,5 +1,6 @@
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS, EXERCISE_GOALS, BADGES } from '../../lib/constants'
+import { useTooltipStyle } from '../../lib/DarkContext'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,7 @@ function TodaySnapshot({ todayLog }) {
 }
 
 function CalorieTrend({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const data = logs.slice(0, 10).reverse().map(l => ({
     date: l.date?.slice(5),
     cal: l.calories || 0,
@@ -191,7 +193,7 @@ function CalorieTrend({ logs }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
           <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 2400]} width={35} />
-          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }} />
+          <Tooltip contentStyle={tooltipStyle} />
           <ReferenceLine y={GOALS.calories.target} stroke="#a5b4fc" strokeDasharray="4 2"
             label={{ value: `${GOALS.calories.target}`, fill: '#818cf8', fontSize: 9, position: 'right' }} />
           <Area type="monotone" dataKey="cal" stroke="#6366f1" strokeWidth={2.5}
@@ -221,6 +223,7 @@ function buildWeightProjection() {
 }
 
 function WeightTrend({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const weightLogs = logs.filter(l => l.weight).reverse()
   const actualMap = Object.fromEntries(weightLogs.map(l => [l.date.slice(5), Number(l.weight)]))
   const projection = buildWeightProjection()
@@ -253,7 +256,7 @@ function WeightTrend({ logs }) {
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
           <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }}
             domain={[yMin, yMax]} width={32} />
-          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+          <Tooltip contentStyle={tooltipStyle}
             formatter={(v, name) => [`${v} kg`, name === 'ideal' ? 'Ideal' : 'Actual']} />
           <Line dataKey="ideal" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 3"
             dot={false} connectNulls name="ideal" />
@@ -270,6 +273,7 @@ function WeightTrend({ logs }) {
 }
 
 function BalanceTrend({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const balanceLogs = logs.filter(l => l.account_balance).reverse()
   if (!balanceLogs.length) return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-between" style={{ minHeight: 200 }}>
@@ -328,7 +332,7 @@ function BalanceTrend({ logs }) {
           <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
           <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={42}
             tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} domain={['dataMin - 2000', 'dataMax + 2000']} />
-          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+          <Tooltip contentStyle={tooltipStyle}
             formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name === 'forecast' ? 'Forecast' : 'Actual']} />
           <Line dataKey="forecast" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 3"
             dot={false} connectNulls name="forecast" />

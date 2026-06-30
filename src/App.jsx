@@ -19,6 +19,7 @@ import Calendar from './components/tabs/Calendar'
 import History from './components/tabs/History'
 import Log from './components/tabs/Log'
 import Food from './components/tabs/Food'
+import { DarkContext } from './lib/DarkContext'
 import clsx from 'clsx'
 
 const TABS = [
@@ -75,6 +76,7 @@ export default function App() {
   const latestWeight = logs.find(l => l.weight)?.weight
 
   return (
+    <DarkContext.Provider value={dark}>
     <div style={{ minHeight: '100dvh', background: 'var(--c-page)' }}>
       {/* ── Header ── fixed 52px */}
       <header className="fixed top-0 left-0 right-0 z-20 flex items-center"
@@ -157,5 +159,6 @@ export default function App() {
         {activeTab === 'history'   && <History logs={logs} />}
       </div>
     </div>
+    </DarkContext.Provider>
   )
 }

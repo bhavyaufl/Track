@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { GOALS } from '../../lib/constants'
+import { useTooltipStyle } from '../../lib/DarkContext'
 
 const CATEGORY_COLORS = {
   Food: '#f59e0b', Transport: '#6366f1', Shopping: '#ec4899',
@@ -13,6 +14,7 @@ const CATEGORY_EMOJI = {
 }
 
 function BalanceChart({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const data = logs.filter(l => l.account_balance).slice(0, 30).reverse()
     .map(l => ({ date: l.date?.slice(5), balance: Number(l.account_balance) }))
   if (!data.length) return <div className="text-center py-8 text-gray-400 text-sm">No balance data yet.</div>
@@ -30,7 +32,7 @@ function BalanceChart({ logs }) {
         <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
         <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={40}
           tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} domain={['dataMin - 1000', 'dataMax + 1000']} />
-        <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }}
+        <Tooltip contentStyle={tooltipStyle}
           formatter={v => [`₹${Number(v).toLocaleString()}`, 'Balance']} />
         <Area type="monotone" dataKey="balance" stroke="#10b981" strokeWidth={2}
           fill="url(#balGradFin)" dot={{ r: 2.5, fill: '#10b981', strokeWidth: 0 }} />
@@ -40,6 +42,7 @@ function BalanceChart({ logs }) {
 }
 
 export default function Finance({ logs }) {
+  const tooltipStyle = useTooltipStyle()
   const logsWithSpend = logs.filter(l => l.spending?.length)
   const totalSpend = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
   const avgDaily = logsWithSpend.length ? Math.round(totalSpend / logsWithSpend.length) : 0
@@ -101,7 +104,7 @@ export default function Finance({ logs }) {
                 {catData.map((e, i) => <Cell key={i} fill={CATEGORY_COLORS[e.name] || '#94a3b8'} />)}
               </Pie>
               <Tooltip formatter={v => [`₹${Number(v).toLocaleString()}`, '']}
-                contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 }} />
+                contentStyle={tooltipStyle} />
             </PieChart>
             <div className="flex-1 space-y-1.5">
               {catData.slice(0, 4).map(d => (
