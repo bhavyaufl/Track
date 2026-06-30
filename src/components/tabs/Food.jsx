@@ -4,28 +4,28 @@ import { WEEKLY_PLAN, DAY_NAMES } from '../../lib/mealPlan'
 
 const GROCERY_LIST = [
   { category: 'Protein', emoji: '🥩', items: [
-    { item: 'Chicken breast', qty: '1.5 kg', note: 'Grill all on Sunday for the week' },
-    { item: 'Eggs', qty: '30 (2.5 dozen)', note: 'Boil 10 on Sunday; keeps 5 days' },
-    { item: 'Greek yogurt', qty: '800g', note: '4 × 200g packs' },
-    { item: 'Whey protein', qty: '4 scoops', note: 'From your tub' },
-    { item: 'Protein shake (RTD)', qty: '3 bottles', note: 'Pre-made, for on-the-go' },
+    { item: 'Chicken breast',      qty: '1.5 kg',       price: 525,  note: 'Grill all on Sunday for the week' },
+    { item: 'Eggs',                qty: '30 (2.5 doz)', price: 225,  note: 'Boil 10 on Sunday; keeps 5 days' },
+    { item: 'Greek yogurt',        qty: '800g',          price: 360,  note: '4 × 200g packs (Epigamia etc.)' },
+    { item: 'Whey protein',        qty: '4 scoops',      price: 0,    note: 'From your tub — already owned' },
+    { item: 'Protein shake (RTD)', qty: '3 bottles',     price: 300,  note: 'Pre-made, for on-the-go' },
   ]},
   { category: 'Carbs', emoji: '🍚', items: [
-    { item: 'Rice', qty: '600g', note: 'Cook 6 cups on Sunday' },
-    { item: 'Roti', qty: '14', note: 'Buy from store or make; refrigerate' },
-    { item: 'Dal (toor/masoor)', qty: '100g dry', note: 'Pressure cook 1 batch on Sunday' },
+    { item: 'Rice',              qty: '600g',  price: 45,  note: 'Cook 6 cups on Sunday' },
+    { item: 'Roti',              qty: '14',    price: 100, note: 'From store; refrigerate' },
+    { item: 'Dal (toor/masoor)', qty: '100g',  price: 15,  note: 'Pressure cook 1 batch on Sunday' },
   ]},
   { category: 'Drinks', emoji: '🥤', items: [
-    { item: 'Diet Coke', qty: '7 cans', note: '1 with dinner every night — zero kcal ✓' },
+    { item: 'Diet Coke', qty: '7 cans', price: 385, note: '1 with dinner — zero kcal ✓' },
   ]},
   { category: 'Pantry', emoji: '🌿', items: [
-    { item: 'Lemons', qty: '5', note: '' },
-    { item: 'Onions', qty: '4 medium', note: '' },
-    { item: 'Tomatoes', qty: '4 medium', note: '' },
-    { item: 'Green chillies', qty: '1 small pack', note: '' },
-    { item: 'Fresh coriander', qty: '1 bunch', note: '' },
-    { item: 'Capsicum', qty: '1', note: 'For Saturday omelette' },
-    { item: 'Cooking spray (0-cal)', qty: '1 can', note: 'Instead of oil — saves ~100 kcal/day' },
+    { item: 'Lemons',                qty: '5',         price: 25,  note: '' },
+    { item: 'Onions',                qty: '4 medium',  price: 20,  note: '' },
+    { item: 'Tomatoes',              qty: '4 medium',  price: 50,  note: '' },
+    { item: 'Green chillies',        qty: '1 pack',    price: 15,  note: '' },
+    { item: 'Fresh coriander',       qty: '1 bunch',   price: 15,  note: '' },
+    { item: 'Capsicum',              qty: '1',         price: 30,  note: 'For Saturday omelette' },
+    { item: 'Cooking spray (0-cal)', qty: '1 can',     price: 0,   note: 'One-time buy; lasts months' },
   ]},
 ]
 
@@ -173,6 +173,16 @@ function GroceryList() {
   const [checked, setChecked] = useState({})
   const isSunday = new Date().getDay() === 0
 
+  const totalCost = GROCERY_LIST.flatMap(c => c.items).reduce((s, it) => s + (it.price || 0), 0)
+  const checkedCost = Object.entries(checked)
+    .filter(([, v]) => v)
+    .reduce((s, [key]) => {
+      const [cat, idx] = key.split('-')
+      const item = GROCERY_LIST.find(c => c.category === cat)?.items[Number(idx)]
+      return s + (item?.price || 0)
+    }, 0)
+  const remainingCost = totalCost - checkedCost
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <button onClick={() => setOpen(o => !o)}
@@ -181,41 +191,67 @@ function GroceryList() {
           <span className="text-xl">🛒</span>
           <div className="text-left">
             <div className="font-semibold text-gray-800 text-sm">Weekly Grocery List</div>
-            {isSunday && <div className="text-xs text-orange-500 font-semibold">Today is Sunday — shop & prep now!</div>}
+            {isSunday
+              ? <div className="text-xs text-orange-500 font-semibold">Today is Sunday — shop & prep now!</div>
+              : <div className="text-xs text-gray-400">Est. ₹{totalCost.toLocaleString()} / week</div>
+            }
           </div>
         </div>
-        <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-indigo-600">₹{totalCost.toLocaleString()}</span>
+          <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+        </div>
       </button>
 
       {open && (
         <div className="px-4 pb-4 border-t border-gray-100">
-          {GROCERY_LIST.map(cat => (
-            <div key={cat.category}>
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-4 pb-2 flex items-center gap-1.5">
-                <span>{cat.emoji}</span>{cat.category}
+          {GROCERY_LIST.map(cat => {
+            const catTotal = cat.items.reduce((s, it) => s + (it.price || 0), 0)
+            return (
+              <div key={cat.category}>
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-4 pb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span>{cat.emoji}</span>{cat.category}</span>
+                  <span className="text-gray-400 font-semibold">₹{catTotal.toLocaleString()}</span>
+                </div>
+                {cat.items.map((it, i) => {
+                  const key = `${cat.category}-${i}`
+                  const done = checked[key]
+                  return (
+                    <button key={i} onClick={() => setChecked(c => ({ ...c, [key]: !c[key] }))}
+                      className="w-full flex items-start justify-between py-2 border-b border-gray-50 last:border-0 text-left">
+                      <div className="flex items-start gap-2.5">
+                        <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${done ? 'bg-indigo-600 border-indigo-600' : 'border-gray-200'}`}>
+                          {done && <span className="text-white text-xs leading-none">✓</span>}
+                        </div>
+                        <div>
+                          <div className={`text-sm font-medium transition-colors ${done ? 'text-gray-300 line-through' : 'text-gray-700'}`}>{it.item}</div>
+                          <div className="text-xs text-gray-400">{it.qty}{it.note ? ` · ${it.note}` : ''}</div>
+                        </div>
+                      </div>
+                      <span className={`text-sm font-bold ml-4 shrink-0 ${done ? 'text-gray-300' : it.price === 0 ? 'text-gray-300' : 'text-indigo-600'}`}>
+                        {it.price === 0 ? '—' : `₹${it.price}`}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
-              {cat.items.map((it, i) => {
-                const key = `${cat.category}-${i}`
-                const done = checked[key]
-                return (
-                  <button key={i} onClick={() => setChecked(c => ({ ...c, [key]: !c[key] }))}
-                    className="w-full flex items-start justify-between py-2 border-b border-gray-50 last:border-0 text-left">
-                    <div className="flex items-start gap-2.5">
-                      <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${done ? 'bg-indigo-600 border-indigo-600' : 'border-gray-200'}`}>
-                        {done && <span className="text-white text-xs leading-none">✓</span>}
-                      </div>
-                      <div>
-                        <div className={`text-sm font-medium transition-colors ${done ? 'text-gray-300 line-through' : 'text-gray-700'}`}>{it.item}</div>
-                        {it.note && <div className="text-xs text-gray-400">{it.note}</div>}
-                      </div>
-                    </div>
-                    <span className={`text-sm font-semibold ml-4 shrink-0 ${done ? 'text-gray-300' : 'text-indigo-600'}`}>{it.qty}</span>
-                  </button>
-                )
-              })}
+            )
+          })}
+
+          {/* Total footer */}
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-gray-700">Weekly total</div>
+              {checkedCost > 0 && (
+                <div className="text-xs text-gray-400">
+                  ₹{checkedCost} ticked · ₹{remainingCost} left to buy
+                </div>
+              )}
             </div>
-          ))}
-          <button onClick={() => setChecked({})} className="mt-3 text-xs text-gray-400 hover:text-red-400 transition-colors">↺ reset checklist</button>
+            <div className="text-lg font-black text-indigo-600">₹{totalCost.toLocaleString()}</div>
+          </div>
+
+          <button onClick={() => setChecked({})} className="mt-2 text-xs text-gray-400 hover:text-red-400 transition-colors">↺ reset checklist</button>
         </div>
       )}
     </div>
