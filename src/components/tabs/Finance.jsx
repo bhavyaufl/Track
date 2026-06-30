@@ -1,6 +1,6 @@
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, ReferenceLine, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { GOALS } from '../../lib/constants'
-import { useTooltipStyle } from '../../lib/DarkContext'
+import { useTooltipStyle, useDark } from '../../lib/DarkContext'
 
 const CATEGORY_COLORS = {
   Food: '#f59e0b', Transport: '#6366f1', Shopping: '#ec4899',
@@ -292,6 +292,7 @@ function buildBalanceProjection(logs) {
 
 function BalanceProjection({ logs }) {
   const tooltipStyle = useTooltipStyle()
+  const dark         = useDark()
   const rows         = buildBalanceProjection(logs)
   const current      = rows.find(r => r.isCurrentMonth)
   const chartData    = rows.map(r => ({ month: r.month, spend: r.varSpend, type: r.spendType, over: r.over }))
@@ -439,9 +440,10 @@ function BalanceProjection({ logs }) {
             <Bar dataKey="spend" radius={[3, 3, 0, 0]}>
               {chartData.map((d, i) => (
                 <Cell key={i} fill={
-                  d.type === 'budgeted' ? '#e5e7eb' :
-                  d.over              ? '#f87171' :
-                  d.type === 'projected' ? '#818cf8' : '#34d399'
+                  d.over               ? '#f87171' :
+                  d.type === 'actual'  ? '#34d399' :
+                  d.type === 'projected' ? '#818cf8' :
+                  dark                 ? '#374151' : '#cbd5e1'
                 } />
               ))}
             </Bar>
@@ -451,7 +453,7 @@ function BalanceProjection({ logs }) {
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Actual — under</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Projected</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-400" /><span>Over budget</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-gray-200" /><span>Planned</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm" style={{ background: dark ? '#374151' : '#cbd5e1' }} /><span>Planned</span></div>
         </div>
       </div>
 
