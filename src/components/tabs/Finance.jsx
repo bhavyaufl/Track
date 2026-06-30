@@ -49,7 +49,10 @@ function SavingsProjection({ logs }) {
   const logsWithSpend   = logs.filter(l => l.spending?.length)
   const totalSpend      = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
   const avgDailySpend   = logsWithSpend.length ? totalSpend / logsWithSpend.length : GOALS.dailyBudget
-  const varMonthlySpend = Math.round(avgDailySpend * 30)
+  const avgMonthlyActual = Math.round(avgDailySpend * 30)
+
+  // Projection uses the budgeted monthly spend, not the logged avg
+  const varMonthlySpend = GOALS.monthlyBudget
   const totalMonthly    = varMonthlySpend + FIXED_MONTHLY
 
   const startBalance   = Number(logs.find(l => l.account_balance)?.account_balance || 0)
@@ -57,7 +60,7 @@ function SavingsProjection({ logs }) {
   const projectedSaved = monthlySurplus * PROJ_MONTHS.length
   const onTrack        = projectedSaved >= SAVINGS_GOAL
   const gap            = SAVINGS_GOAL - projectedSaved
-  const maxVarMonthly  = MONTHLY_SALARY - REQUIRED_MONTHLY - FIXED_MONTHLY  // max variable spend
+  const maxVarMonthly  = MONTHLY_SALARY - REQUIRED_MONTHLY - FIXED_MONTHLY
   const needToCut      = Math.max(0, varMonthlySpend - maxVarMonthly)
   const maxDailyVar    = Math.round(maxVarMonthly / 30)
 
@@ -161,8 +164,10 @@ function SavingsProjection({ logs }) {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">~</span>
                 <div>
-                  <span className="text-sm text-gray-600">Daily expenses</span>
-                  <span className="text-xs text-gray-400 ml-1.5">₹{Math.round(avgDailySpend)}/day × 30</span>
+                  <span className="text-sm text-gray-600">Variable spend (budget)</span>
+                  {logsWithSpend.length > 0 && (
+                    <span className="text-xs text-gray-400 ml-1.5">avg ₹{avgMonthlyActual.toLocaleString()} logged</span>
+                  )}
                 </div>
               </div>
               <span className={`text-sm font-semibold ${varMonthlySpend > maxVarMonthly ? 'text-red-500' : 'text-gray-500'}`}>

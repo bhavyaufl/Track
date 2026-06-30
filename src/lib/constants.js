@@ -9,6 +9,7 @@ export const GOALS = {
   startWeight: 90,
   startBodyFat: 25,
   dailyBudget: 500,
+  monthlyBudget: 20000,
   startDate: '2026-06-30',
   endDate: '2026-08-09',
 }
