@@ -63,10 +63,12 @@ export const WORKOUT_GROUPS = {
     'Incline Bench Press',
     'Shoulder Press',
     'Lateral Raises',
+    'Tricep Pushdown',
   ],
   push_b: [
     'Cable Chest Flies',
-    'Tricep Pushdown',
+    'Shoulder Press',
+    'Lateral Raises',
     'Single Tricep Pushdown',
     'Triceps Pullover',
   ],
