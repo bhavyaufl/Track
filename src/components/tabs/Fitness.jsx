@@ -163,6 +163,7 @@ function BodyProgress() {
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
 import { useTooltipStyle } from '../../lib/DarkContext'
+import { DAY_WORKOUT, GROUP_LABEL, GROUP_EMOJI, GROUP_COLOR, WORKOUT_GROUPS, CARDIO_PLAN } from '../../lib/workoutPlan'
 
 const SCREEN_TIME_GOAL = 180 // minutes — 3 hours
 
@@ -413,13 +414,185 @@ function WorkoutHistory({ logs }) {
   )
 }
 
+// ─── Weekly Exercise Plan ─────────────────────────────────────────────────────
+const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function WeeklyPlan({ levels, logs }) {
+  const today    = new Date().getDay()
+  const [viewDay, setViewDay] = useState(today)
+  const goalMap  = Object.fromEntries(EXERCISE_GOALS.map(g => [g.name, g]))
+  const levelMap = Object.fromEntries(levels.map(l => [l.exercise_name, l]))
+
+  // find the log for the viewDay this week
+  const todayDate = new Date()
+  const diffDays  = viewDay - today
+  const viewDate  = new Date(todayDate)
+  viewDate.setDate(todayDate.getDate() + diffDays)
+  const viewDateStr = viewDate.toISOString().split('T')[0]
+  const dayLog    = logs.find(l => l.date === viewDateStr)
+  const loggedMap = Object.fromEntries((dayLog?.exercises || []).map(e => [e.name, e]))
+
+  const group     = DAY_WORKOUT[viewDay]
+  const cardio    = CARDIO_PLAN[viewDay]
+  const color     = GROUP_COLOR[group] || '#6366f1'
+  const gymExercises = WORKOUT_GROUPS[group] || []
+  const doneCount    = gymExercises.filter(n => loggedMap[n]).length
+
+  return (
+    <div className="space-y-3">
+      {/* Weekly strip */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">This Week</div>
+        <div className="grid grid-cols-7 gap-1">
+          {DAY_NAMES_SHORT.map((d, i) => {
+            const g = DAY_WORKOUT[i]
+            const isToday   = i === today
+            const isViewing = i === viewDay
+            return (
+              <button key={i} onClick={() => setViewDay(i)}
+                className={`rounded-xl py-2 flex flex-col items-center gap-0.5 transition-all ${
+                  isViewing ? 'ring-2' : 'hover:bg-gray-50'
+                }`}
+                style={isViewing ? { ringColor: color, outline: `2px solid ${color}`, outlineOffset: 1 } : {}}>
+                <div className={`text-xs font-bold ${isToday ? 'text-indigo-600' : 'text-gray-500'}`}>{d}</div>
+                <div className="text-base">{GROUP_EMOJI[g]}</div>
+                <div className={`text-xs font-medium ${isViewing ? 'text-gray-700' : 'text-gray-400'}`}
+                  style={isViewing ? { color } : {}}>
+                  {g === 'rest' ? 'Rest' : g === 'cardio' ? '5k' : g}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Selected day plan */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `2px solid ${color}33` }}>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{GROUP_EMOJI[group]}</span>
+              <span className="text-base font-bold text-gray-800">{GROUP_LABEL[group]}</span>
+              {viewDay === today && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-semibold">Today</span>}
+            </div>
+            {cardio && <div className="text-xs text-gray-400 mt-0.5 ml-8">{cardio.desc}</div>}
+          </div>
+          {gymExercises.length > 0 && (
+            <div className={`text-sm font-bold px-2.5 py-1 rounded-full ${
+              doneCount === gymExercises.length ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'
+            }`}>{doneCount}/{gymExercises.length} done</div>
+          )}
+        </div>
+
+        {group === 'rest' && (
+          <div className="px-4 py-6 text-center">
+            <div className="text-4xl mb-2">😴</div>
+            <div className="text-sm font-semibold text-gray-600">Gym is closed — full recovery day</div>
+            <div className="text-xs text-gray-400 mt-1">Stretch, walk, or do active recovery</div>
+          </div>
+        )}
+
+        {group === 'cardio' && (
+          <div className="divide-y divide-gray-50">
+            {WORKOUT_GROUPS.cardio.map(name => {
+              const level  = levelMap[name]
+              const goal   = goalMap[name]
+              const logged = loggedMap[name]
+              return (
+                <FitnessExRow key={name} name={name} level={level} goal={goal} logged={logged} color={color} />
+              )
+            })}
+          </div>
+        )}
+
+        {gymExercises.length > 0 && group !== 'cardio' && (
+          <div className="divide-y divide-gray-50">
+            {gymExercises.map(name => {
+              const level  = levelMap[name]
+              const goal   = goalMap[name]
+              const logged = loggedMap[name]
+              return (
+                <FitnessExRow key={name} name={name} level={level} goal={goal} logged={logged} color={color} />
+              )
+            })}
+          </div>
+        )}
+
+        {gymExercises.length > 0 && doneCount === gymExercises.length && (
+          <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100 text-center">
+            <span className="text-xs font-bold text-emerald-600">Session complete 🎉</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FitnessExRow({ name, level, goal, logged, color }) {
+  const scheme   = goal?.scheme || '3×12'
+  const isDone   = !!logged
+  const readyUp  = !isDone && level?.last_sets?.length >= 3 && level.last_sets.every(s => s >= 12)
+  const hasLevel = !!level
+
+  let pct = null
+  if (hasLevel && goal?.goal != null && level.unit === goal?.unit && goal.goal > 0) {
+    pct = Math.min(100, Math.round((level.current_weight / goal.goal) * 100))
+  }
+
+  return (
+    <div className={`px-4 py-3 ${isDone ? 'bg-emerald-50/40' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
+            isDone ? 'bg-emerald-400' : readyUp ? 'bg-amber-400' : hasLevel ? 'bg-indigo-300' : 'bg-gray-200'
+          }`} />
+          <div className="min-w-0">
+            <div className={`text-sm font-semibold ${isDone ? 'text-emerald-700' : 'text-gray-800'}`}>{name}</div>
+            {isDone && logged.sets && (
+              <div className="text-xs text-emerald-600 mt-0.5 font-medium">
+                ✓ {logged.weight} {logged.unit} · sets [{logged.sets.join(', ')}]
+              </div>
+            )}
+            {readyUp && (
+              <div className="text-xs text-amber-600 font-semibold mt-0.5">⬆ Ready to increase weight</div>
+            )}
+            {!hasLevel && !isDone && (
+              <div className="text-xs text-gray-400 mt-0.5">Not started — find your starting weight</div>
+            )}
+            {pct != null && !isDone && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 90 ? '#10b981' : color }} />
+                </div>
+                <span className="text-xs text-gray-400 shrink-0">{pct}% to goal</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-xs font-semibold text-gray-500">{scheme}</div>
+          {hasLevel && !isDone && (
+            <div className={`text-base font-bold mt-0.5 ${readyUp ? 'text-amber-600' : 'text-indigo-600'}`}>
+              {level.current_weight} <span className="text-sm font-medium text-gray-400">{level.unit}</span>
+            </div>
+          )}
+          {goal?.goal != null && (
+            <div className="text-xs text-gray-400">→ {goal.goal} {goal.unit}</div>
+          )}
+          {!hasLevel && <div className="text-sm font-bold text-gray-300 mt-0.5">—</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Fitness({ logs, levels }) {
-  const [tab, setTab] = useState('levels')
+  const [tab, setTab] = useState('plan')
 
   return (
     <div className="space-y-4 fade-up">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['history','📋']].map(([id, label]) => (
+        {[['plan','📅'],['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['history','📋']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex-1 py-1.5 text-sm rounded-lg transition-all ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm font-medium' : 'text-gray-400 hover:text-gray-600'
@@ -428,6 +601,8 @@ export default function Fitness({ logs, levels }) {
           </button>
         ))}
       </div>
+
+      {tab === 'plan' && <WeeklyPlan levels={levels} logs={logs} />}
 
       {tab === 'levels' && (
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
@@ -460,7 +635,8 @@ export default function Fitness({ logs, levels }) {
 
       {tab === 'history' && (
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <h3 className="text-gray-700 font-semibold mb-3">Workout History</h3>
+          <h3 className="text-gray-700 font-semibold mb-1">Workout History</h3>
+          <div className="text-xs text-gray-400 mb-3">Last 14 sessions</div>
           <WorkoutHistory logs={logs} />
         </div>
       )}

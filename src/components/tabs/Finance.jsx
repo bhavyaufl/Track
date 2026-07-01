@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, ReferenceLine, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { GOALS } from '../../lib/constants'
 import { useTooltipStyle, useDark } from '../../lib/DarkContext'
@@ -13,11 +14,11 @@ const CATEGORY_EMOJI = {
   Subscriptions: '📱', Bills: '📄', Education: '📚',
 }
 
-// ── Shared config ────────────────────────────────────────────────────────────
+// ── Shared config ─────────────────────────────────────────────────────────────
 const MONTHLY_SALARY   = 75000
 const SAVINGS_GOAL     = 500000
 const PROJ_MONTHS      = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
-const REQUIRED_MONTHLY = SAVINGS_GOAL / PROJ_MONTHS.length   // ₹50,000
+const REQUIRED_MONTHLY = SAVINGS_GOAL / PROJ_MONTHS.length  // ₹50,000
 
 const FIXED_SUBS = [
   { name: 'Claude AI', amount: 2000 },
@@ -26,37 +27,54 @@ const FIXED_SUBS = [
 ]
 const FIXED_MONTHLY = FIXED_SUBS.reduce((s, x) => s + x.amount, 0)  // ₹2,338
 
-// ── Savings projection helpers ───────────────────────────────────────────────
-function buildSavingsProjection(varMonthlySpend, startBalance) {
-  const total = varMonthlySpend + FIXED_MONTHLY
-  let balance = startBalance || 0
-  let cumSaved = 0
+// ── Default editable budget breakdown ────────────────────────────────────────
+const DEFAULT_BUDGET_CATS = [
+  { cat: 'Food', emoji: '🛒', color: '#10b981', sub: [
+    { label: 'Home groceries', amount: 6600, note: '~₹1,660/wk · chicken, eggs, yogurt, shakes, Diet Coke, pantry' },
+    { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match' },
+  ]},
+  { cat: 'Outing', emoji: '🍽️', color: '#6366f1', sub: [
+    { label: 'Dining / café', amount: 4000, note: '~2 meals out/wk' },
+    { label: 'Activities',    amount: 3600, note: 'Movies, turf, events, etc.' },
+  ]},
+  { cat: 'Misc', emoji: '🎲', color: '#f59e0b', sub: [
+    { label: 'Petrol',        amount: 1900, note: 'Bike fuel · commute + errands' },
+    { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
+    { label: 'Sundry',        amount: 1000, note: 'Anything else' },
+  ]},
+]
+
+function loadBudgetCats() {
+  try { return JSON.parse(localStorage.getItem('budgetCats')) || DEFAULT_BUDGET_CATS }
+  catch { return DEFAULT_BUDGET_CATS }
+}
+
+// ── Savings projection ────────────────────────────────────────────────────────
+function buildSavingsProjection(varMonthlyBudget, startBalance) {
+  const total = varMonthlyBudget + FIXED_MONTHLY
+  let balance = startBalance || 0, cumSaved = 0
   return PROJ_MONTHS.map((m, i) => {
     const surplus = MONTHLY_SALARY - total
-    balance  += surplus
-    cumSaved += surplus
+    balance += surplus; cumSaved += surplus
     return { month: m, projected: Math.round(cumSaved), target: REQUIRED_MONTHLY * (i + 1), balance: Math.round(balance) }
   })
 }
 
-function SavingsProjection({ logs }) {
-  const tooltipStyle  = useTooltipStyle()
-  const logsWithSpend = logs.filter(l => l.spending?.length)
-  const totalSpend    = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
-  const avgDailySpend = logsWithSpend.length ? totalSpend / logsWithSpend.length : GOALS.dailyBudget
+function SavingsProjection({ logs, varMonthlyBudget }) {
+  const tooltipStyle    = useTooltipStyle()
+  const logsWithSpend   = logs.filter(l => l.spending?.length)
+  const totalSpend      = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
+  const avgDailySpend   = logsWithSpend.length ? totalSpend / logsWithSpend.length : GOALS.dailyBudget
   const avgMonthlyActual = Math.round(avgDailySpend * 30)
-  const varMonthlySpend  = GOALS.monthlyBudget
-  const totalMonthly     = varMonthlySpend + FIXED_MONTHLY
-  const startBalance     = Number(logs.find(l => l.account_balance)?.account_balance || 0)
-  const monthlySurplus   = MONTHLY_SALARY - totalMonthly
-  const projectedSaved   = monthlySurplus * PROJ_MONTHS.length
-  const onTrack          = projectedSaved >= SAVINGS_GOAL
-  const gap              = SAVINGS_GOAL - projectedSaved
-  const maxVarMonthly    = MONTHLY_SALARY - REQUIRED_MONTHLY - FIXED_MONTHLY
-  const needToCut        = Math.max(0, varMonthlySpend - maxVarMonthly)
-  const maxDailyVar      = Math.round(maxVarMonthly / 30)
-  const data             = buildSavingsProjection(varMonthlySpend, startBalance)
-  const finalBal         = data[data.length - 1]?.balance || 0
+  const totalMonthly    = varMonthlyBudget + FIXED_MONTHLY
+  const startBalance    = Number(logs.find(l => l.account_balance)?.account_balance || 0)
+  const monthlySurplus  = MONTHLY_SALARY - totalMonthly
+  const projectedSaved  = monthlySurplus * PROJ_MONTHS.length
+  const onTrack         = projectedSaved >= SAVINGS_GOAL
+  const gap             = SAVINGS_GOAL - projectedSaved
+  const maxVarMonthly   = MONTHLY_SALARY - REQUIRED_MONTHLY - FIXED_MONTHLY
+  const data            = buildSavingsProjection(varMonthlyBudget, startBalance)
+  const finalBal        = data[data.length - 1]?.balance || 0
 
   return (
     <div className="space-y-3">
@@ -99,16 +117,16 @@ function SavingsProjection({ logs }) {
                 Projected savings by Apr 2027: ₹{projectedSaved.toLocaleString()} — ₹{Math.abs(gap).toLocaleString()} above goal
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                Projected account balance (incl. current ₹{startBalance.toLocaleString()}): ₹{finalBal.toLocaleString()}
+                Projected balance (incl. current ₹{startBalance.toLocaleString()}): ₹{finalBal.toLocaleString()}
               </div>
             </>
           ) : (
             <>
               <div className="text-xs font-bold text-orange-600">
-                At current spend: ₹{projectedSaved.toLocaleString()} saved by Apr 2027 — ₹{gap.toLocaleString()} short
+                At current budget: ₹{projectedSaved.toLocaleString()} saved — ₹{gap.toLocaleString()} short of ₹5L
               </div>
               <div className="text-xs text-gray-500 mt-0.5">
-                Cap variable spend at ₹{maxVarMonthly.toLocaleString()}/mo (₹{maxDailyVar}/day) — cut ₹{needToCut.toLocaleString()}/mo
+                Need ≤ ₹{maxVarMonthly.toLocaleString()}/mo variable to hit goal
               </div>
             </>
           )}
@@ -135,9 +153,7 @@ function SavingsProjection({ logs }) {
                 <span className="text-xs text-gray-400 ml-1.5">avg ₹{avgMonthlyActual.toLocaleString()} logged</span>
               )}
             </div>
-            <span className={`text-sm font-semibold ${varMonthlySpend > maxVarMonthly ? 'text-red-500' : 'text-gray-500'}`}>
-              −₹{varMonthlySpend.toLocaleString()}
-            </span>
+            <span className="text-sm font-semibold text-gray-500">−₹{varMonthlyBudget.toLocaleString()}</span>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-gray-200">
             <span className="text-sm font-bold text-gray-700">Net saved / month</span>
@@ -193,39 +209,109 @@ function SavingsProjection({ logs }) {
   )
 }
 
-// ── Variable budget category breakdown ──────────────────────────────────────
-// Food = home groceries ~₹1,660/wk × 4 = ₹6,640
-//      + office canteen 6 days × ₹75 × 4 wk = ₹1,800  → total ₹8,440 ≈ ₹8,500
-// Verified prices: chicken ₹340/kg, eggs ₹60/6, Greek yogurt ₹284/700g,
-//   Amul shake ₹50, Diet Coke ₹40/can, canteen meal ~₹75 (mix & match)
-// Total must equal GOALS.monthlyBudget (₹20,000)
-const VAR_BUDGET_CATS = [
-  { cat: 'Food',    amount: 8500, emoji: '🛒', color: '#10b981',
-    sub: [
-      { label: 'Home groceries', amount: 6600, note: '~₹1,660/wk · chicken, eggs, yogurt, shakes, Diet Coke, pantry' },
-      { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match' },
-    ],
-  },
-  { cat: 'Outing',  amount: 7600, emoji: '🍽️', color: '#6366f1',
-    sub: [
-      { label: 'Dining / café',  amount: 4000, note: '~2 meals out/wk' },
-      { label: 'Activities',     amount: 3600, note: 'Movies, turf, events, etc.' },
-    ],
-  },
-  { cat: 'Misc',    amount: 3900, emoji: '🎲', color: '#f59e0b',
-    sub: [
-      { label: 'Petrol',        amount: 1900, note: 'Bike fuel · covers commute + all errands' },
-      { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
-      { label: 'Sundry',        amount: 1000, note: 'Anything else' },
-    ],
-  },
-]
+// ── Editable budget breakdown ─────────────────────────────────────────────────
+function BudgetBreakdown({ cats, onUpdate }) {
+  const [editing, setEditing] = useState(null) // { ci, si, val }
+  const total = cats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
-// ── Balance / spend projection ───────────────────────────────────────────────
-function buildBalanceProjection(logs) {
+  function commit(ci, si, raw) {
+    const amount = Math.max(0, parseInt(raw) || 0)
+    onUpdate(cats.map((c, i) => i !== ci ? c : {
+      ...c, sub: c.sub.map((s, j) => j !== si ? s : { ...s, amount })
+    }))
+    setEditing(null)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <div className="mb-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-gray-700 font-semibold text-sm">Variable Budget — Breakdown</h3>
+          <span className="text-sm font-black text-gray-700">₹{total.toLocaleString()}</span>
+        </div>
+        <div className="text-xs text-gray-400">tap any amount to edit</div>
+      </div>
+
+      {cats.map((c, ci) => {
+        const catTotal = c.sub.reduce((s, sub) => s + sub.amount, 0)
+        const pct = total > 0 ? Math.round(catTotal / total * 100) : 0
+        return (
+          <div key={c.cat} className="mb-4 last:mb-0">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-base">{c.emoji}</span>
+                <span className="text-sm font-bold text-gray-700">{c.cat}</span>
+              </div>
+              <div className="text-right shrink-0 ml-2">
+                <span className="text-sm font-bold text-gray-700">₹{catTotal.toLocaleString()}</span>
+                <span className="text-xs text-gray-400 ml-1">{pct}%</span>
+              </div>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
+              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: c.color }} />
+            </div>
+            <div className="space-y-1.5 pl-6">
+              {c.sub.map((s, si) => {
+                const isEd = editing?.ci === ci && editing?.si === si
+                return (
+                  <div key={s.label} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-gray-500">{s.label}</span>
+                      <span className="text-xs text-gray-300 ml-1.5 hidden sm:inline">{s.note}</span>
+                    </div>
+                    {isEd ? (
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <span className="text-xs text-gray-400">₹</span>
+                        <input
+                          type="number"
+                          className="w-20 text-right text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-300 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                          value={editing.val}
+                          onChange={e => setEditing(ed => ({ ...ed, val: e.target.value }))}
+                          onBlur={() => commit(ci, si, editing.val)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') e.target.blur()
+                            if (e.key === 'Escape') setEditing(null)
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setEditing({ ci, si, val: s.amount })}
+                        className="text-xs font-bold text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 shrink-0 px-2 py-0.5 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                      >
+                        ₹{s.amount.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      <div className="flex justify-between items-center pt-3 border-t border-gray-100 mt-1">
+        <span className="text-xs text-gray-500 font-semibold">Total</span>
+        <div className="text-right">
+          <span className={`text-sm font-black ${total === GOALS.monthlyBudget ? 'text-gray-700' : total > GOALS.monthlyBudget ? 'text-orange-500' : 'text-indigo-500'}`}>
+            ₹{total.toLocaleString()}
+          </span>
+          {total !== GOALS.monthlyBudget && (
+            <span className="text-xs text-gray-400 ml-1">
+              {total > GOALS.monthlyBudget ? `(+₹${(total - GOALS.monthlyBudget).toLocaleString()} over ₹20k default)` : `(₹${(GOALS.monthlyBudget - total).toLocaleString()} unallocated)`}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Balance / spend projection ────────────────────────────────────────────────
+function buildBalanceProjection(logs, varMonthlyBudget) {
   const today        = new Date()
   const startBalance = Number(logs.find(l => l.account_balance)?.account_balance || 0)
-
   const spendByMonth = {}
   logs.forEach(l => {
     if (!l.spending?.length || !l.date) return
@@ -239,99 +325,75 @@ function buildBalanceProjection(logs) {
   for (let y = 2026, mo = 6; ; mo++) {
     if (mo > 11) { y++; mo = 0 }
     if (y > 2027 || (y === 2027 && mo > 3)) break
-
-    const monthKey     = `${y}-${String(mo + 1).padStart(2, '0')}`
-    const daysInMonth  = new Date(y, mo + 1, 0).getDate()
+    const monthKey       = `${y}-${String(mo + 1).padStart(2, '0')}`
+    const daysInMonth    = new Date(y, mo + 1, 0).getDate()
     const isCurrentMonth = y === today.getFullYear() && mo === today.getMonth()
-    const isPast       = new Date(y, mo + 1, 0) < new Date(today.getFullYear(), today.getMonth(), 1)
-    const actualSpend  = spendByMonth[monthKey] || 0
+    const isPast         = new Date(y, mo + 1, 0) < new Date(today.getFullYear(), today.getMonth(), 1)
+    const actualSpend    = spendByMonth[monthKey] || 0
 
     let varSpend, spendType
     if (isPast) {
-      varSpend  = actualSpend
-      spendType = 'actual'
+      varSpend = actualSpend; spendType = 'actual'
     } else if (isCurrentMonth) {
-      const dom     = today.getDate()
-      const daily   = dom > 0 ? actualSpend / dom : 0
-      varSpend      = Math.round(daily * daysInMonth) || GOALS.monthlyBudget
-      spendType     = 'projected'
+      const dom = today.getDate()
+      varSpend = Math.round((dom > 0 ? actualSpend / dom : 0) * daysInMonth) || varMonthlyBudget
+      spendType = 'projected'
     } else {
-      varSpend  = GOALS.monthlyBudget
-      spendType = 'budgeted'
+      varSpend = varMonthlyBudget; spendType = 'budgeted'
     }
 
-    const openBal  = balance
-    balance        = balance + MONTHLY_SALARY - FIXED_MONTHLY - varSpend
+    const openBal = balance
+    balance = balance + MONTHLY_SALARY - FIXED_MONTHLY - varSpend
     const closeBal = Math.round(balance)
-    const over     = varSpend > GOALS.monthlyBudget
-
-    // 8th of next calendar month = report date
-    const nextMo = mo === 11 ? new Date(y + 1, 0, 8) : new Date(y, mo + 1, 8)
-    const reportStr = nextMo.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    const over     = varSpend > varMonthlyBudget
+    const nextMo   = mo === 11 ? new Date(y + 1, 0, 8) : new Date(y, mo + 1, 8)
 
     rows.push({
       month: new Date(y, mo, 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
-      monthKey,
-      openBal: Math.round(openBal),
-      closeBal,
-      varSpend,
-      actualSpend,
-      over,
-      spendType,
-      isCurrentMonth,
-      isPast,
-      daysInMonth,
+      monthKey, openBal: Math.round(openBal), closeBal, varSpend, actualSpend,
+      over, spendType, isCurrentMonth, isPast, daysInMonth,
       dom: isCurrentMonth ? today.getDate() : null,
       dailyRate: isCurrentMonth ? (actualSpend / today.getDate()) : null,
-      reportStr,
+      reportStr: nextMo.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     })
   }
-
   return rows
 }
 
-function BalanceProjection({ logs }) {
+function BalanceProjection({ logs, varMonthlyBudget }) {
   const tooltipStyle = useTooltipStyle()
   const dark         = useDark()
-  const rows         = buildBalanceProjection(logs)
+  const rows         = buildBalanceProjection(logs, varMonthlyBudget)
   const current      = rows.find(r => r.isCurrentMonth)
   const chartData    = rows.map(r => ({ month: r.month, spend: r.varSpend, type: r.spendType, over: r.over }))
 
   return (
     <div className="space-y-3">
-      {/* ── Current month status ── */}
       {current && (
         <div className={`rounded-2xl p-4 border ${current.over ? 'bg-red-50 border-red-100' : 'bg-indigo-50 border-indigo-100'}`}>
           <div className="flex items-start justify-between mb-3">
             <div>
               <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">This Month</div>
-              <div className="text-xl font-bold text-gray-800 mt-0.5">
-                {current.month} · Day {current.dom}/{current.daysInMonth}
-              </div>
+              <div className="text-xl font-bold text-gray-800 mt-0.5">{current.month} · Day {current.dom}/{current.daysInMonth}</div>
             </div>
             <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ${current.over ? 'bg-red-500 text-white' : 'bg-indigo-500 text-white'}`}>
               {current.over ? '⚠ Over budget' : '✓ On track'}
             </div>
           </div>
-
-          {/* Spend progress bar */}
           <div className="mb-3">
             <div className="flex justify-between text-xs mb-1.5">
               <span className="font-bold text-gray-700">₹{current.actualSpend.toLocaleString()} spent</span>
-              <span className="text-gray-400">of ₹{GOALS.monthlyBudget.toLocaleString()} budget</span>
+              <span className="text-gray-400">of ₹{varMonthlyBudget.toLocaleString()} budget</span>
             </div>
             <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${current.over ? 'bg-red-400' : 'bg-indigo-400'}`}
-                style={{ width: `${Math.min(100, Math.round(current.actualSpend / GOALS.monthlyBudget * 100))}%` }}
-              />
+              <div className={`h-full rounded-full transition-all ${current.over ? 'bg-red-400' : 'bg-indigo-400'}`}
+                style={{ width: `${Math.min(100, Math.round(current.actualSpend / varMonthlyBudget * 100))}%` }} />
             </div>
             <div className="flex justify-between text-xs mt-1 text-gray-400">
-              <span>{Math.round(current.actualSpend / GOALS.monthlyBudget * 100)}% used · {current.daysInMonth - current.dom} days left</span>
-              <span>₹{Math.max(0, GOALS.monthlyBudget - current.actualSpend).toLocaleString()} remaining</span>
+              <span>{Math.round(current.actualSpend / varMonthlyBudget * 100)}% used · {current.daysInMonth - current.dom} days left</span>
+              <span>₹{Math.max(0, varMonthlyBudget - current.actualSpend).toLocaleString()} remaining</span>
             </div>
           </div>
-
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-white rounded-xl p-2.5 border border-gray-100">
               <div className="text-xs text-gray-400">₹/day actual</div>
@@ -342,10 +404,8 @@ function BalanceProjection({ logs }) {
             </div>
             <div className="bg-white rounded-xl p-2.5 border border-gray-100">
               <div className="text-xs text-gray-400">Month-end est.</div>
-              <div className={`text-sm font-bold ${current.over ? 'text-red-500' : 'text-indigo-600'}`}>
-                ₹{current.varSpend.toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-300">budget ₹{GOALS.monthlyBudget.toLocaleString()}</div>
+              <div className={`text-sm font-bold ${current.over ? 'text-red-500' : 'text-indigo-600'}`}>₹{current.varSpend.toLocaleString()}</div>
+              <div className="text-xs text-gray-300">budget ₹{varMonthlyBudget.toLocaleString()}</div>
             </div>
             <div className="bg-white rounded-xl p-2.5 border border-gray-100">
               <div className="text-xs text-gray-400">Closing bal.</div>
@@ -353,77 +413,25 @@ function BalanceProjection({ logs }) {
               <div className="text-xs text-gray-300">report {current.reportStr}</div>
             </div>
           </div>
-
-          {current.over && (
-            <div className="mt-2.5 bg-white rounded-xl p-2.5 border border-red-100">
+          <div className="mt-2.5 bg-white rounded-xl p-2.5 border border-gray-100">
+            {current.over ? (
               <div className="text-xs font-bold text-red-500">
-                ₹{(current.varSpend - GOALS.monthlyBudget).toLocaleString()} over — spend ≤ ₹{Math.max(0, Math.round((GOALS.monthlyBudget - current.actualSpend) / Math.max(1, current.daysInMonth - current.dom)))} /day to recover
+                ₹{(current.varSpend - varMonthlyBudget).toLocaleString()} over — spend ≤ ₹{Math.max(0, Math.round((varMonthlyBudget - current.actualSpend) / Math.max(1, current.daysInMonth - current.dom)))} /day to recover
               </div>
-            </div>
-          )}
-          {!current.over && (
-            <div className="mt-2.5 bg-white rounded-xl p-2.5 border border-indigo-50">
+            ) : (
               <div className="text-xs font-semibold text-indigo-600">
-                ₹{Math.max(0, GOALS.monthlyBudget - current.actualSpend).toLocaleString()} left this month · ₹{Math.max(0, Math.round((GOALS.monthlyBudget - current.actualSpend) / Math.max(1, current.daysInMonth - current.dom)))} /day from here
+                ₹{Math.max(0, varMonthlyBudget - current.actualSpend).toLocaleString()} left · ₹{Math.max(0, Math.round((varMonthlyBudget - current.actualSpend) / Math.max(1, current.daysInMonth - current.dom)))} /day from here
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── Variable budget breakdown ── */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-        <div className="mb-3">
-          <h3 className="text-gray-700 font-semibold text-sm">₹{GOALS.monthlyBudget.toLocaleString()} Variable Budget — Breakdown</h3>
-          <div className="text-xs text-gray-400">how the ₹20k is split across categories</div>
-        </div>
-        {VAR_BUDGET_CATS.map(c => {
-          const pct = Math.round(c.amount / GOALS.monthlyBudget * 100)
-          return (
-            <div key={c.cat} className="mb-4 last:mb-0">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">{c.emoji}</span>
-                  <span className="text-sm font-bold text-gray-700">{c.cat}</span>
-                </div>
-                <div className="text-right shrink-0 ml-2">
-                  <span className="text-sm font-bold text-gray-700">₹{c.amount.toLocaleString()}</span>
-                  <span className="text-xs text-gray-400 ml-1">{pct}%</span>
-                </div>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color }} />
-              </div>
-              {c.sub && (
-                <div className="space-y-1 pl-6">
-                  {c.sub.map(s => (
-                    <div key={s.label} className="flex items-start justify-between">
-                      <div>
-                        <span className="text-xs font-semibold text-gray-500">{s.label}</span>
-                        <span className="text-xs text-gray-300 ml-1.5">{s.note}</span>
-                      </div>
-                      <span className="text-xs font-bold text-gray-400 shrink-0 ml-2">₹{s.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-        <div className="flex justify-between items-center pt-3 border-t border-gray-100 mt-1">
-          <span className="text-xs text-gray-500 font-semibold">Total variable</span>
-          <span className="text-sm font-black text-gray-700">
-            ₹{VAR_BUDGET_CATS.reduce((s, c) => s + c.amount, 0).toLocaleString()}
-            <span className="text-xs font-normal text-gray-400 ml-1">/ ₹{GOALS.monthlyBudget.toLocaleString()} budget</span>
-          </span>
-        </div>
-      </div>
-
-      {/* ── Spend bar chart ── */}
+      {/* Bar chart */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <div className="mb-3">
           <h3 className="text-gray-700 font-semibold text-sm">Monthly Spend vs Budget</h3>
-          <div className="text-xs text-gray-400">salary 7th · report 8th · budget ₹{GOALS.monthlyBudget.toLocaleString()}/mo</div>
+          <div className="text-xs text-gray-400">salary 7th · report 8th · budget ₹{varMonthlyBudget.toLocaleString()}/mo</div>
         </div>
         <ResponsiveContainer width="100%" height={130}>
           <BarChart data={chartData} barCategoryGap="20%">
@@ -432,24 +440,22 @@ function BalanceProjection({ logs }) {
             <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={44}
               tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
             <Tooltip contentStyle={tooltipStyle}
-              formatter={(v, _, props) => [
-                `₹${Number(v).toLocaleString()} (${props.payload?.type})`, 'Variable spend',
-              ]} />
-            <ReferenceLine y={GOALS.monthlyBudget} stroke="#6366f1" strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: `₹${(GOALS.monthlyBudget / 1000).toFixed(0)}k`, position: 'insideTopRight', fontSize: 9, fill: '#6366f1' }} />
+              formatter={(v, _, p) => [`₹${Number(v).toLocaleString()} (${p.payload?.type})`, 'Variable spend']} />
+            <ReferenceLine y={varMonthlyBudget} stroke="#6366f1" strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: `₹${(varMonthlyBudget / 1000).toFixed(0)}k`, position: 'insideTopRight', fontSize: 9, fill: '#6366f1' }} />
             <Bar dataKey="spend" radius={[3, 3, 0, 0]}>
               {chartData.map((d, i) => (
                 <Cell key={i} fill={
                   d.over               ? '#f87171' :
                   d.type === 'actual'  ? '#34d399' :
                   d.type === 'projected' ? '#818cf8' :
-                  dark                 ? '#374151' : '#cbd5e1'
+                  dark ? '#374151' : '#cbd5e1'
                 } />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-400">
+        <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Actual — under</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Projected</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-400" /><span>Over budget</span></div>
@@ -457,7 +463,7 @@ function BalanceProjection({ logs }) {
         </div>
       </div>
 
-      {/* ── Month-by-month table ── */}
+      {/* Month table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
           <h3 className="text-gray-700 font-semibold text-sm">Month-by-Month Balance</h3>
@@ -469,44 +475,29 @@ function BalanceProjection({ logs }) {
               className={`px-4 py-2.5 ${r.isCurrentMonth ? 'bg-indigo-50/60' : r.over && r.spendType !== 'budgeted' ? 'bg-red-50/50' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className={`text-xs font-bold w-14 shrink-0 ${r.isCurrentMonth ? 'text-indigo-600' : 'text-gray-500'}`}>
-                    {r.month}
-                  </span>
+                  <span className={`text-xs font-bold w-14 shrink-0 ${r.isCurrentMonth ? 'text-indigo-600' : 'text-gray-500'}`}>{r.month}</span>
                   <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 ${
                     r.spendType === 'budgeted' ? 'bg-gray-100 text-gray-400' :
-                    r.over      ? 'bg-red-100 text-red-500' :
-                                  'bg-emerald-100 text-emerald-600'
+                    r.over ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-600'
                   }`}>
-                    {r.spendType === 'budgeted'
-                      ? 'planned'
-                      : r.over
-                        ? `+₹${(r.varSpend - GOALS.monthlyBudget).toLocaleString()} over`
-                        : `₹${(GOALS.monthlyBudget - r.varSpend).toLocaleString()} under`}
+                    {r.spendType === 'budgeted' ? 'planned'
+                      : r.over ? `+₹${(r.varSpend - varMonthlyBudget).toLocaleString()} over`
+                      : `₹${(varMonthlyBudget - r.varSpend).toLocaleString()} under`}
                   </span>
-                  {r.spendType === 'projected' && (
-                    <span className="text-xs text-gray-300">est.</span>
-                  )}
+                  {r.spendType === 'projected' && <span className="text-xs text-gray-300">est.</span>}
                 </div>
                 <div className="text-right shrink-0 ml-2">
-                  <div className={`text-xs font-bold ${
-                    r.spendType === 'budgeted' ? 'text-gray-400' :
-                    r.over ? 'text-red-500' : 'text-gray-700'
-                  }`}>
+                  <div className={`text-xs font-bold ${r.spendType === 'budgeted' ? 'text-gray-400' : r.over ? 'text-red-500' : 'text-gray-700'}`}>
                     ₹{r.varSpend.toLocaleString()}
                   </div>
                   <div className="text-xs text-gray-400">→ ₹{r.closeBal.toLocaleString()}</div>
                 </div>
               </div>
-              {r.isCurrentMonth && r.over && (
-                <div className="text-xs text-red-400 mt-1 pl-16">
-                  Spend ≤ ₹{Math.max(0, Math.round((GOALS.monthlyBudget - r.actualSpend) / Math.max(1, r.daysInMonth - r.dom)))} /day to recover
-                </div>
-              )}
             </div>
           ))}
         </div>
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-          <span className="text-xs text-gray-400">opening + ₹75k − ₹{FIXED_MONTHLY.toLocaleString()} subs − variable = closing</span>
+          <span className="text-xs text-gray-400">+₹75k − ₹{FIXED_MONTHLY.toLocaleString()} subs − variable = closing</span>
           <span className="text-xs font-bold text-gray-500">Apr '27: ₹{rows[rows.length - 1]?.closeBal.toLocaleString()}</span>
         </div>
       </div>
@@ -514,13 +505,12 @@ function BalanceProjection({ logs }) {
   )
 }
 
-// ── Balance history chart ────────────────────────────────────────────────────
+// ── Balance history chart ─────────────────────────────────────────────────────
 function BalanceChart({ logs }) {
   const tooltipStyle = useTooltipStyle()
   const data = logs.filter(l => l.account_balance).slice(0, 30).reverse()
     .map(l => ({ date: l.date?.slice(5), balance: Number(l.account_balance) }))
   if (!data.length) return <div className="text-center py-8 text-gray-400 text-sm">No balance data yet.</div>
-
   return (
     <ResponsiveContainer width="100%" height={130}>
       <AreaChart data={data}>
@@ -542,9 +532,18 @@ function BalanceChart({ logs }) {
   )
 }
 
-// ── Main export ──────────────────────────────────────────────────────────────
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function Finance({ logs }) {
-  const tooltipStyle  = useTooltipStyle()
+  const tooltipStyle = useTooltipStyle()
+
+  const [budgetCats, setBudgetCats] = useState(loadBudgetCats)
+  const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
+
+  function handleBudgetUpdate(next) {
+    setBudgetCats(next)
+    localStorage.setItem('budgetCats', JSON.stringify(next))
+  }
+
   const logsWithSpend = logs.filter(l => l.spending?.length)
   const totalSpend    = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
   const avgDaily      = logsWithSpend.length ? Math.round(totalSpend / logsWithSpend.length) : 0
@@ -559,13 +558,12 @@ export default function Finance({ logs }) {
   return (
     <div className="space-y-3 fade-up">
 
-      {/* ── Savings goal projection ── */}
-      <SavingsProjection logs={logs} />
+      <SavingsProjection logs={logs} varMonthlyBudget={varMonthlyBudget} />
 
-      {/* ── Spend / balance projection ── */}
-      <BalanceProjection logs={logs} />
+      <BudgetBreakdown cats={budgetCats} onUpdate={handleBudgetUpdate} />
 
-      {/* Hero — total spent */}
+      <BalanceProjection logs={logs} varMonthlyBudget={varMonthlyBudget} />
+
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Total Variable Spend — All Time</div>
         <div className="text-4xl font-black text-gray-800">₹{totalSpend.toLocaleString()}</div>
@@ -576,7 +574,6 @@ export default function Finance({ logs }) {
         </div>
       </div>
 
-      {/* Balance + daily budget row */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-emerald-50 rounded-2xl p-3.5 border border-emerald-100">
           <div className="text-gray-500 text-xs mb-1">Current Balance</div>
@@ -590,20 +587,17 @@ export default function Finance({ logs }) {
         </div>
       </div>
 
-      {/* Balance trend (historical) */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <h3 className="text-gray-700 font-semibold text-sm mb-3">Balance History</h3>
         <BalanceChart logs={logs} />
       </div>
 
-      {/* Category breakdown */}
       {catData.length > 0 && (
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
           <h3 className="text-gray-700 font-semibold text-sm mb-3">Spent by Category</h3>
           <div className="flex gap-4 items-center mb-4">
             <PieChart width={120} height={120}>
-              <Pie data={catData} cx={55} cy={55} innerRadius={34} outerRadius={54}
-                dataKey="value" paddingAngle={2}>
+              <Pie data={catData} cx={55} cy={55} innerRadius={34} outerRadius={54} dataKey="value" paddingAngle={2}>
                 {catData.map((e, i) => <Cell key={i} fill={CATEGORY_COLORS[e.name] || '#94a3b8'} />)}
               </Pie>
               <Tooltip formatter={v => [`₹${Number(v).toLocaleString()}`, '']} contentStyle={tooltipStyle} />
@@ -645,7 +639,6 @@ export default function Finance({ logs }) {
         </div>
       )}
 
-      {/* Recent spending */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <h3 className="text-gray-700 font-semibold text-sm mb-3">Recent Spending</h3>
         {logsWithSpend.length ? (
@@ -663,8 +656,7 @@ export default function Finance({ logs }) {
                   {l.spending.map((s, i) => (
                     <div key={i} className="flex justify-between items-center py-0.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ background: CATEGORY_COLORS[s.category] || '#94a3b8' }} />
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CATEGORY_COLORS[s.category] || '#94a3b8' }} />
                         <span className="text-gray-600 text-xs">{s.item}</span>
                         <span className="text-gray-300 text-xs">{s.category}</span>
                       </div>

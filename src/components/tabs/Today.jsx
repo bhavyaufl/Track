@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { GOALS } from '../../lib/constants'
+import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
 import { WEEKLY_PLAN } from '../../lib/mealPlan'
+import { DAY_WORKOUT, GROUP_LABEL, GROUP_EMOJI, GROUP_COLOR, WORKOUT_GROUPS, CARDIO_PLAN } from '../../lib/workoutPlan'
 
 function ScoreStrip({ log, onEdit }) {
   const score = log?.daily_score || 0
@@ -433,6 +434,214 @@ function TodayMealPlan({ log, dayIdx, onRefresh }) {
   )
 }
 
+// ─── Sleep Tracker ───────────────────────────────────────────────────────────
+const SLEEP_TARGET  = '01:00'  // target lights-out
+const WAKE_TARGET   = '08:30'  // target wake-up
+const SLEEP_GOAL_M  = 450      // 7h 30m
+
+function parseTime(t) {
+  if (!t) return null
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+function fmtDur(mins) {
+  if (mins == null) return '—'
+  const h = Math.floor(Math.abs(mins) / 60), m = Math.abs(mins) % 60
+  return `${h}h ${m > 0 ? m + 'm' : ''}`.trim()
+}
+function sleepDurMin(sleepT, wakeT) {
+  const s = parseTime(sleepT), w = parseTime(wakeT)
+  if (s === null || w === null) return null
+  return w > s ? w - s : (1440 - s) + w
+}
+
+function SleepTracker({ log }) {
+  const sleepTime = log?.sleep_time || null
+  const wakeTime  = log?.wake_time  || null
+  const duration  = sleepDurMin(sleepTime, wakeTime)
+  const sleptBy   = sleepTime ? parseTime(sleepTime) <= parseTime(SLEEP_TARGET) : null
+  const wokeBy    = wakeTime  ? parseTime(wakeTime)  <= parseTime(WAKE_TARGET)  : null
+  const durOk     = duration  != null ? duration >= SLEEP_GOAL_M                : null
+  const allGood   = sleptBy && wokeBy && durOk
+  const hasData   = sleepTime || wakeTime
+
+  return (
+    <div className={`rounded-xl border shadow-sm overflow-hidden ${allGood ? 'bg-emerald-50 border-emerald-100' : hasData ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/60">
+        <div className="flex items-center gap-2">
+          <span className="text-base">😴</span>
+          <span className="text-xs font-semibold text-gray-700">Sleep</span>
+          <span className="text-xs text-gray-400">target 1:00 AM → 8:30 AM · 7h 30m</span>
+        </div>
+        {hasData && (
+          <span className={`text-xs font-bold ${allGood ? 'text-emerald-600' : 'text-red-500'}`}>
+            {allGood ? '✓ On target' : '⚠ Off'}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-0 divide-x divide-white/60 px-0">
+        {[
+          { label: 'Slept at', val: sleepTime || '—', sub: sleptBy === true ? '✓ on time' : sleptBy === false ? `+${fmtDur(parseTime(sleepTime) - parseTime(SLEEP_TARGET))} late` : `target ${SLEEP_TARGET}`, ok: sleptBy },
+          { label: 'Woke at',  val: wakeTime  || '—', sub: wokeBy  === true ? '✓ on time' : wokeBy  === false ? `${fmtDur(parseTime(wakeTime) - parseTime(WAKE_TARGET))} late` : `target ${WAKE_TARGET}`, ok: wokeBy },
+          { label: 'Duration', val: duration != null ? fmtDur(duration) : '—', sub: durOk === true ? '✓ 7h 30m+' : durOk === false ? `${fmtDur(duration - SLEEP_GOAL_M)} short` : 'goal 7h 30m', ok: durOk },
+        ].map(({ label, val, sub, ok }) => (
+          <div key={label} className="px-3 py-2.5 text-center">
+            <div className="text-xs text-gray-400 mb-0.5">{label}</div>
+            <div className={`text-sm font-bold ${ok === true ? 'text-emerald-600' : ok === false ? 'text-red-500' : 'text-gray-400'}`}>{val}</div>
+            <div className={`text-xs mt-0.5 ${ok === true ? 'text-emerald-500' : ok === false ? 'text-red-400' : 'text-gray-300'}`}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {!hasData && (
+        <div className="px-3 pb-2.5 text-center text-xs text-gray-300">Log sleep time during /checkin</div>
+      )}
+    </div>
+  )
+}
+
+// ─── Today's Exercise Plan ───────────────────────────────────────────────────
+
+function ExerciseRow({ name, level, goal, logged }) {
+  const scheme  = goal?.scheme || '3×12'
+  const isDone  = !!logged
+  const readyUp = !isDone && level?.last_sets?.length >= 3 && level.last_sets.every(s => s >= 12)
+  const hasLevel = !!level
+
+  let pct = null
+  if (hasLevel && goal?.goal != null && level.unit === goal?.unit && goal.goal > 0) {
+    pct = Math.min(100, Math.round((level.current_weight / goal.goal) * 100))
+  }
+
+  return (
+    <div className={`px-3 py-2.5 ${isDone ? 'bg-emerald-50/50' : ''}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+            isDone   ? 'bg-emerald-400' :
+            readyUp  ? 'bg-amber-400'   :
+            hasLevel ? 'bg-indigo-300'  : 'bg-gray-200'
+          }`} />
+          <div className="min-w-0">
+            <div className={`text-sm font-semibold truncate ${isDone ? 'text-emerald-700' : 'text-gray-800'}`}>{name}</div>
+            {isDone && logged.sets && (
+              <div className="text-xs text-emerald-600 font-medium">
+                ✓ {logged.weight} {logged.unit} · [{logged.sets.join(', ')}] reps
+              </div>
+            )}
+            {readyUp && (
+              <div className="text-xs text-amber-600 font-semibold">⬆ Hit 3×12 last session — increase weight today</div>
+            )}
+            {!isDone && !hasLevel && (
+              <div className="text-xs text-gray-400">First time — start light and find your working weight</div>
+            )}
+          </div>
+        </div>
+        <div className="text-right shrink-0 ml-2">
+          <div className="text-xs font-semibold text-gray-500">{scheme}</div>
+          {hasLevel && !isDone && (
+            <div className={`text-sm font-bold ${readyUp ? 'text-amber-600' : 'text-indigo-600'}`}>
+              {level.current_weight} {level.unit}
+            </div>
+          )}
+          {goal?.goal != null && (
+            <div className="text-xs text-gray-400">→ {goal.goal} {goal.unit}</div>
+          )}
+        </div>
+      </div>
+      {pct != null && !isDone && (
+        <div className="ml-5 mt-1.5">
+          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all"
+              style={{ width: `${pct}%`, background: pct >= 90 ? '#10b981' : pct >= 60 ? '#6366f1' : '#a5b4fc' }} />
+          </div>
+          <div className="text-xs text-gray-400 mt-0.5">{pct}% to goal</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TodayExercisePlan({ log, dayIdx, levels }) {
+  const group   = DAY_WORKOUT[dayIdx]
+  const cardio  = CARDIO_PLAN[dayIdx]
+  const color   = GROUP_COLOR[group] || '#6366f1'
+
+  const goalMap  = Object.fromEntries(EXERCISE_GOALS.map(g => [g.name, g]))
+  const levelMap = Object.fromEntries(levels.map(l => [l.exercise_name, l]))
+  const loggedMap = Object.fromEntries((log?.exercises || []).map(e => [e.name, e]))
+
+  const gymExercises = WORKOUT_GROUPS[group] || []
+  const doneCount    = gymExercises.filter(n => loggedMap[n]).length
+  const hasGym       = gymExercises.length > 0
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+      {/* Header strip */}
+      <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: `2px solid ${color}22` }}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{GROUP_EMOJI[group]}</span>
+          <div>
+            <div className="text-sm font-bold text-gray-800">{GROUP_LABEL[group]}</div>
+            {cardio && <div className="text-xs text-gray-400">{cardio.desc}</div>}
+          </div>
+        </div>
+        {hasGym && (
+          <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            doneCount === gymExercises.length ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'
+          }`}>
+            {doneCount}/{gymExercises.length}
+          </div>
+        )}
+      </div>
+
+      {/* Rest day */}
+      {group === 'rest' && (
+        <div className="px-3 py-4 text-center">
+          <div className="text-sm text-gray-500 font-medium">Gym is closed today — full recovery</div>
+          <div className="text-xs text-gray-400 mt-1">Use this time to stretch, foam roll, or take a walk</div>
+        </div>
+      )}
+
+      {/* Cardio-only day (Sunday) */}
+      {group === 'cardio' && (
+        <div className="divide-y divide-gray-50">
+          {WORKOUT_GROUPS.cardio.map(name => (
+            <ExerciseRow key={name}
+              name={name}
+              level={levelMap[name]}
+              goal={goalMap[name]}
+              logged={loggedMap[name]}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Gym day */}
+      {hasGym && group !== 'cardio' && (
+        <div className="divide-y divide-gray-50">
+          {gymExercises.map(name => (
+            <ExerciseRow key={name}
+              name={name}
+              level={levelMap[name]}
+              goal={goalMap[name]}
+              logged={loggedMap[name]}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Session complete banner */}
+      {hasGym && doneCount === gymExercises.length && gymExercises.length > 0 && (
+        <div className="px-3 py-2 bg-emerald-50 border-t border-emerald-100 text-center">
+          <span className="text-xs font-bold text-emerald-600">Session complete — great work! 🎉</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SpendingView({ log }) {
   if (!log?.spending?.length) return null
   const total = log.spending.reduce((s, e) => s + e.amount, 0)
@@ -648,7 +857,7 @@ function EditLogModal({ log, onClose, onSaved }) {
 
 // ─── Day View ────────────────────────────────────────────────────────────────
 
-function DayView({ log, onRefresh, dayIdx }) {
+function DayView({ log, onRefresh, dayIdx, levels }) {
   const [editing, setEditing] = useState(false)
   const macros = log?.macros || { p: 0, c: 0, f: 0 }
   const cal    = log?.calories || 0
@@ -669,7 +878,9 @@ function DayView({ log, onRefresh, dayIdx }) {
       </div>
 
       <StepsBar steps={steps} />
+      <SleepTracker log={log} />
       <GoalList log={log} />
+      <TodayExercisePlan log={log} dayIdx={dayIdx} levels={levels} />
       <TodayMealPlan log={log} dayIdx={dayIdx} onRefresh={onRefresh} />
       <SpendingView log={log} />
 
@@ -695,7 +906,7 @@ function DayView({ log, onRefresh, dayIdx }) {
   )
 }
 
-export default function Today({ log, yesterdayLog, onRefresh }) {
+export default function Today({ log, yesterdayLog, onRefresh, levels = [] }) {
   const [tab, setTab] = useState('today')
 
   return (
@@ -711,8 +922,8 @@ export default function Today({ log, yesterdayLog, onRefresh }) {
         ))}
       </div>
 
-      {tab === 'today'     && <DayView log={log}          onRefresh={onRefresh} dayIdx={new Date().getDay()} />}
-      {tab === 'yesterday' && <DayView log={yesterdayLog} onRefresh={onRefresh} dayIdx={(new Date().getDay() + 6) % 7} />}
+      {tab === 'today'     && <DayView log={log}          onRefresh={onRefresh} dayIdx={new Date().getDay()} levels={levels} />}
+      {tab === 'yesterday' && <DayView log={yesterdayLog} onRefresh={onRefresh} dayIdx={(new Date().getDay() + 6) % 7} levels={levels} />}
     </div>
   )
 }
