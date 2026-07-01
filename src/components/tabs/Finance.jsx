@@ -22,8 +22,8 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'PhonePe MF', invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
   { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
 ]
-const DEFAULT_MONTHLY_SIP  = 32762   // ₹75k − ₹2,338 subs − ₹19,900 var − ₹20,000 bank
-const DEFAULT_BANK_BALANCE = 29000   // current account balance
+const DEFAULT_MONTHLY_SIP  = 32762   // ₹75k − ₹2,338 subs − ₹19,900 var − ₹20,000 savings
+const DEFAULT_SAVINGS_BAL  = 20000   // dedicated savings account — first ₹20k deposited Jul '26
 
 function loadPortfolio() {
   try { return JSON.parse(localStorage.getItem('portfolio')) || DEFAULT_PORTFOLIO }
@@ -33,12 +33,12 @@ function loadSip() {
   try { return Number(localStorage.getItem('monthlySIP_v2')) || DEFAULT_MONTHLY_SIP }
   catch { return DEFAULT_MONTHLY_SIP }
 }
-function loadBankBalance() {
+function loadSavingsBal() {
   try {
-    const v = localStorage.getItem('currentBankBalance')
-    return v !== null ? Number(v) : DEFAULT_BANK_BALANCE
+    const v = localStorage.getItem('savingsAccountBal')
+    return v !== null ? Number(v) : DEFAULT_SAVINGS_BAL
   }
-  catch { return DEFAULT_BANK_BALANCE }
+  catch { return DEFAULT_SAVINGS_BAL }
 }
 
 // SIP future value: PMT × ((1+r)^n − 1) / r × (1+r)
@@ -88,12 +88,13 @@ const CATEGORY_EMOJI = {
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 1 — Wealth Goal (unified ₹6L view)
 // ─────────────────────────────────────────────────────────────────────────────
-function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, bankBalance, onUpdateBankBalance }) {
+function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpdateSavingsBal }) {
   const tooltipStyle = useTooltipStyle()
   const [editingBal, setEditingBal] = useState(false)
-  const [balVal,     setBalVal]     = useState(String(bankBalance))
+  const [balVal,     setBalVal]     = useState(String(savingsBal))
 
-  const startBalance          = bankBalance || Number(logs.find(l => l.account_balance)?.account_balance || 0)
+  // savingsBal = dedicated savings account (separate from spending account)
+  const startBalance          = savingsBal
   const totalPortfolioCurrent = portfolio.reduce((s, p) => s + p.current, 0)
   const currentWealth         = startBalance + totalPortfolioCurrent
 
@@ -137,7 +138,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, bankBalance, onUpd
           <div>
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Wealth Goal · Apr 2027</div>
             <div className="text-3xl font-black text-gray-800">₹6,00,000</div>
-            <div className="text-xs text-gray-500 mt-0.5">bank savings + investment portfolio · 10 salary credits of ₹75k</div>
+            <div className="text-xs text-gray-500 mt-0.5">dedicated savings account + investment portfolio · 10 salary credits of ₹75k</div>
           </div>
           <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 ${onTrack ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'}`}>
             {onTrack ? '✓ On track' : '⚠ Close'}
@@ -165,7 +166,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, bankBalance, onUpd
         {/* 2×2 stat chips */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white rounded-xl p-2.5 border border-gray-100">
-            <div className="text-xs text-gray-400">Bank now</div>
+            <div className="text-xs text-gray-400">Savings A/c</div>
             {editingBal ? (
               <div className="flex items-center gap-0.5 mt-0.5">
                 <span className="text-xs text-gray-500">₹</span>
@@ -173,7 +174,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, bankBalance, onUpd
                   className="w-full text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-300 rounded px-1 py-0.5 focus:outline-none"
                   value={balVal}
                   onChange={e => setBalVal(e.target.value)}
-                  onBlur={() => { onUpdateBankBalance(Math.max(0, Number(balVal) || 0)); setEditingBal(false) }}
+                  onBlur={() => { onUpdateSavingsBal(Math.max(0, Number(balVal) || 0)); setEditingBal(false) }}
                   onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditingBal(false) }}
                   autoFocus />
               </div>
@@ -186,7 +187,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, bankBalance, onUpd
             <div className="text-xs text-gray-500">tap to update</div>
           </div>
           <div className="bg-white rounded-xl p-2.5 border border-gray-100">
-            <div className="text-xs text-gray-400">To bank / mo</div>
+            <div className="text-xs text-gray-400">Saving / mo</div>
             <div className={`text-sm font-bold ${monthlyToBank >= 0 ? 'text-gray-700' : 'text-red-500'}`}>
               ₹{Math.max(0, monthlyToBank).toLocaleString()}
             </div>
@@ -222,7 +223,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, bankBalance, onUpd
             </div>
           )}
           <div className="text-xs text-gray-400 mt-0.5">
-            Current wealth: ₹{startBalance.toLocaleString()} bank + ₹{totalPortfolioCurrent.toLocaleString()} portfolio = ₹{currentWealth.toLocaleString()}
+            Savings A/c ₹{startBalance.toLocaleString()} + portfolio ₹{totalPortfolioCurrent.toLocaleString()} = ₹{currentWealth.toLocaleString()} today · spending account is separate
           </div>
         </div>
       </div>
@@ -326,8 +327,8 @@ function MonthlyAllocation({ varMonthlyBudget, sip, logs }) {
   const monthlyToBank    = Math.max(0, MONTHLY_SALARY - totalMonthlyOut)
 
   const allocData = [
-    { name: 'Bank savings', value: monthlyToBank,       color: '#6366f1' },
-    { name: 'SIP',          value: sip,                 color: '#10b981' },
+    { name: 'Savings A/c',  value: monthlyToBank,       color: '#10b981' },
+    { name: 'SIP',          value: sip,                 color: '#6366f1' },
     { name: 'Variable',     value: varMonthlyBudget,    color: '#f59e0b' },
     { name: 'Subs',         value: FIXED_MONTHLY,       color: '#06b6d4' },
   ].filter(d => d.value > 0)
@@ -373,6 +374,13 @@ function MonthlyAllocation({ varMonthlyBudget, sip, logs }) {
           </div>
           <span className="text-sm font-semibold text-indigo-600">−₹{sip.toLocaleString()}</span>
         </div>
+        <div className="flex items-center justify-between py-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Savings account transfer</span>
+            <span className="text-xs bg-emerald-50 text-emerald-600 font-semibold px-1.5 py-0.5 rounded">saving</span>
+          </div>
+          <span className="text-sm font-semibold text-emerald-600">−₹{monthlyToBank.toLocaleString()}</span>
+        </div>
         <div className="flex items-center justify-between py-0.5 border-t border-gray-50 mt-1 pt-1.5">
           <div>
             <span className="text-sm text-gray-600">Variable spend</span>
@@ -383,14 +391,12 @@ function MonthlyAllocation({ varMonthlyBudget, sip, logs }) {
           <span className="text-sm text-gray-400">−₹{varMonthlyBudget.toLocaleString()}</span>
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-          <span className="text-sm font-bold text-gray-700">To bank / month</span>
-          <span className={`text-lg font-black ${monthlyToBank >= 0 ? 'text-indigo-600' : 'text-red-500'}`}>
-            ₹{monthlyToBank.toLocaleString()}
-          </span>
+          <span className="text-sm font-bold text-gray-700">Spending account buffer</span>
+          <span className="text-lg font-black text-gray-500">~₹29,000</span>
         </div>
         <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-          <span>× 10 months → ₹{(monthlyToBank * N_MONTHS).toLocaleString()} in bank</span>
-          <span>+ ₹{sip.toLocaleString()} SIP growing</span>
+          <span>Savings A/c: ₹{monthlyToBank.toLocaleString()}/mo × 10 → ₹{(monthlyToBank * N_MONTHS).toLocaleString()}</span>
+          <span>SIP: ₹{sip.toLocaleString()}/mo growing</span>
         </div>
       </div>
     </div>
@@ -653,9 +659,9 @@ function InvestmentPortfolio({ portfolio, onUpdatePortfolio, sip, onUpdateSip })
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 5 — Monthly Cash Flow (balance projection)
 // ─────────────────────────────────────────────────────────────────────────────
-function buildCashFlow(logs, varMonthlyBudget, sip, bankBalance) {
+function buildCashFlow(logs, varMonthlyBudget, sip) {
   const today        = new Date()
-  const startBalance = bankBalance || Number(logs.find(l => l.account_balance)?.account_balance || 0)
+  const startBalance = Number(logs.find(l => l.account_balance)?.account_balance || 29000)
   const spendByMonth = {}
   logs.forEach(l => {
     if (!l.spending?.length || !l.date) return
@@ -704,10 +710,10 @@ function buildCashFlow(logs, varMonthlyBudget, sip, bankBalance) {
   return rows
 }
 
-function CashFlow({ logs, varMonthlyBudget, sip, bankBalance }) {
+function CashFlow({ logs, varMonthlyBudget, sip }) {
   const tooltipStyle = useTooltipStyle()
   const dark         = useDark()
-  const rows         = buildCashFlow(logs, varMonthlyBudget, sip, bankBalance)
+  const rows         = buildCashFlow(logs, varMonthlyBudget, sip)
   const current      = rows.find(r => r.isCurrentMonth)
   const chartData    = rows.map(r => ({ month: r.month, spend: r.varSpend, type: r.spendType, over: r.over }))
 
@@ -897,14 +903,14 @@ export default function Finance({ logs }) {
   const [budgetCats,   setBudgetCats]   = useState(loadBudgetCats)
   const [portfolio,    setPortfolio]    = useState(loadPortfolio)
   const [sip,          setSip]          = useState(loadSip)
-  const [bankBalance,  setBankBalance]  = useState(loadBankBalance)
+  const [savingsBal,   setSavingsBal]   = useState(loadSavingsBal)
 
   const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
   function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats', JSON.stringify(next)) }
   function handlePortfolioUpdate(next) { setPortfolio(next); localStorage.setItem('portfolio', JSON.stringify(next)) }
   function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v2', String(val)) }
-  function handleBankBalanceUpdate(val) { setBankBalance(val); localStorage.setItem('currentBankBalance', String(val)) }
+  function handleSavingsBalUpdate(val) { setSavingsBal(val); localStorage.setItem('savingsAccountBal', String(val)) }
 
   const logsWithSpend = logs.filter(l => l.spending?.length)
   const totalSpend    = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
@@ -926,8 +932,8 @@ export default function Finance({ logs }) {
         varMonthlyBudget={varMonthlyBudget}
         sip={sip}
         portfolio={portfolio}
-        bankBalance={bankBalance}
-        onUpdateBankBalance={handleBankBalanceUpdate}
+        savingsBal={savingsBal}
+        onUpdateSavingsBal={handleSavingsBalUpdate}
       />
 
       <Divider label="💸 Monthly Plan" />
@@ -951,7 +957,7 @@ export default function Finance({ logs }) {
       <Divider label="💳 Cash Flow" />
 
       {/* ── Month-by-month balance ── */}
-      <CashFlow logs={logs} varMonthlyBudget={varMonthlyBudget} sip={sip} bankBalance={bankBalance} />
+      <CashFlow logs={logs} varMonthlyBudget={varMonthlyBudget} sip={sip} />
 
       {/* ── Balance + spend summary ── */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
