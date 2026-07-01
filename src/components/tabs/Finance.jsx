@@ -16,7 +16,8 @@ const CATEGORY_EMOJI = {
 
 // ── Shared config ─────────────────────────────────────────────────────────────
 const MONTHLY_SALARY   = 75000
-const SAVINGS_GOAL     = 500000
+const SAVINGS_GOAL     = 500000   // bank savings target
+const TOTAL_GOAL       = 600000   // savings + investments combined
 const PROJ_MONTHS      = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
 const REQUIRED_MONTHLY = SAVINGS_GOAL / PROJ_MONTHS.length  // ₹50,000
 
@@ -26,6 +27,37 @@ const FIXED_SUBS = [
   { name: 'Spotify',   amount: 139  },
 ]
 const FIXED_MONTHLY = FIXED_SUBS.reduce((s, x) => s + x.amount, 0)  // ₹2,338
+
+// ── Investment portfolio ──────────────────────────────────────────────────────
+const DEFAULT_PORTFOLIO = [
+  { platform: 'PhonePe MF', invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
+  { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
+]
+
+const DEFAULT_MONTHLY_SIP = 20000
+
+function loadPortfolio() {
+  try { return JSON.parse(localStorage.getItem('portfolio')) || DEFAULT_PORTFOLIO }
+  catch { return DEFAULT_PORTFOLIO }
+}
+
+function loadSip() {
+  try { return Number(localStorage.getItem('monthlySIP')) || DEFAULT_MONTHLY_SIP }
+  catch { return DEFAULT_MONTHLY_SIP }
+}
+
+// SIP future value: PMT × ((1+r)^n − 1) / r × (1+r)
+function sipFV(monthly, rateAnnual, months) {
+  if (!rateAnnual || !monthly) return monthly * months
+  const r = rateAnnual / 1200
+  return monthly * ((Math.pow(1 + r, months) - 1) / r) * (1 + r)
+}
+
+// Lump-sum future value
+function lumpFV(amount, rateAnnual, months) {
+  if (!rateAnnual) return amount
+  return amount * Math.pow(1 + rateAnnual / 1200, months)
+}
 
 // ── Default editable budget breakdown ────────────────────────────────────────
 const DEFAULT_BUDGET_CATS = [
@@ -50,8 +82,8 @@ function loadBudgetCats() {
 }
 
 // ── Savings projection ────────────────────────────────────────────────────────
-function buildSavingsProjection(varMonthlyBudget, startBalance) {
-  const total = varMonthlyBudget + FIXED_MONTHLY
+function buildSavingsProjection(varMonthlyBudget, startBalance, sip) {
+  const total = varMonthlyBudget + FIXED_MONTHLY + sip
   let balance = startBalance || 0, cumSaved = 0
   return PROJ_MONTHS.map((m, i) => {
     const surplus = MONTHLY_SALARY - total
@@ -60,20 +92,20 @@ function buildSavingsProjection(varMonthlyBudget, startBalance) {
   })
 }
 
-function SavingsProjection({ logs, varMonthlyBudget }) {
+function SavingsProjection({ logs, varMonthlyBudget, sip }) {
   const tooltipStyle    = useTooltipStyle()
   const logsWithSpend   = logs.filter(l => l.spending?.length)
   const totalSpend      = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
   const avgDailySpend   = logsWithSpend.length ? totalSpend / logsWithSpend.length : GOALS.dailyBudget
   const avgMonthlyActual = Math.round(avgDailySpend * 30)
-  const totalMonthly    = varMonthlyBudget + FIXED_MONTHLY
+  const totalMonthly    = varMonthlyBudget + FIXED_MONTHLY + sip
   const startBalance    = Number(logs.find(l => l.account_balance)?.account_balance || 0)
   const monthlySurplus  = MONTHLY_SALARY - totalMonthly
   const projectedSaved  = monthlySurplus * PROJ_MONTHS.length
   const onTrack         = projectedSaved >= SAVINGS_GOAL
   const gap             = SAVINGS_GOAL - projectedSaved
-  const maxVarMonthly   = MONTHLY_SALARY - REQUIRED_MONTHLY - FIXED_MONTHLY
-  const data            = buildSavingsProjection(varMonthlyBudget, startBalance)
+  const maxVarMonthly   = MONTHLY_SALARY - REQUIRED_MONTHLY - FIXED_MONTHLY - sip
+  const data            = buildSavingsProjection(varMonthlyBudget, startBalance, sip)
   const finalBal        = data[data.length - 1]?.balance || 0
 
   return (
@@ -81,9 +113,9 @@ function SavingsProjection({ logs, varMonthlyBudget }) {
       <div className={`rounded-2xl p-4 border ${onTrack ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
         <div className="flex items-start justify-between mb-3">
           <div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Savings Goal</div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Bank Savings Target</div>
             <div className="text-3xl font-black text-gray-800">₹5,00,000</div>
-            <div className="text-xs text-gray-400 mt-0.5">by April 2027 · 10 salary credits of ₹75k on the 7th</div>
+            <div className="text-xs text-gray-400 mt-0.5">part of ₹6L savings + investments goal · Apr 2027</div>
           </div>
           <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 ${onTrack ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'}`}>
             {onTrack ? '✓ On track' : '⚠ Off track'}
@@ -100,7 +132,7 @@ function SavingsProjection({ logs, varMonthlyBudget }) {
             <div className={`text-sm font-bold ${totalMonthly > MONTHLY_SALARY - REQUIRED_MONTHLY ? 'text-red-500' : 'text-emerald-600'}`}>
               ₹{totalMonthly.toLocaleString()}
             </div>
-            <div className="text-xs text-gray-400">var + subs</div>
+            <div className="text-xs text-gray-400">var + subs + sip</div>
           </div>
           <div className="bg-white rounded-xl p-2.5 border border-gray-100">
             <div className="text-xs text-gray-400">Monthly saved</div>
@@ -114,7 +146,7 @@ function SavingsProjection({ logs, varMonthlyBudget }) {
           {onTrack ? (
             <>
               <div className="text-xs font-bold text-emerald-600">
-                Projected savings by Apr 2027: ₹{projectedSaved.toLocaleString()} — ₹{Math.abs(gap).toLocaleString()} above goal
+                Projected bank savings by Apr 2027: ₹{projectedSaved.toLocaleString()} — ₹{Math.abs(gap).toLocaleString()} above ₹5L target
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
                 Projected balance (incl. current ₹{startBalance.toLocaleString()}): ₹{finalBal.toLocaleString()}
@@ -146,6 +178,10 @@ function SavingsProjection({ logs, varMonthlyBudget }) {
               <span className="text-sm font-semibold text-gray-400">−₹{s.amount}</span>
             </div>
           ))}
+          <div className="flex items-center justify-between py-1">
+            <span className="text-sm text-gray-500">Monthly SIP</span>
+            <span className="text-sm font-semibold text-indigo-500">−₹{sip.toLocaleString()}</span>
+          </div>
           <div className="flex items-center justify-between py-1 border-t border-gray-50">
             <div>
               <span className="text-sm text-gray-600">Variable spend (budget)</span>
@@ -174,8 +210,8 @@ function SavingsProjection({ logs, varMonthlyBudget }) {
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="text-gray-700 font-semibold text-sm">Savings Projection</h3>
-            <div className="text-xs text-gray-400">Jul 2026 → Apr 2027 · cumulative</div>
+            <h3 className="text-gray-700 font-semibold text-sm">Bank Savings Projection</h3>
+            <div className="text-xs text-gray-400">Jul 2026 → Apr 2027 · cumulative (after ₹{sip.toLocaleString()} SIP deducted)</div>
           </div>
           <div className={`text-sm font-bold ${onTrack ? 'text-emerald-600' : 'text-orange-500'}`}>
             ₹{projectedSaved.toLocaleString()}
@@ -308,8 +344,345 @@ function BudgetBreakdown({ cats, onUpdate }) {
   )
 }
 
+// ── Investment portfolio ──────────────────────────────────────────────────────
+function InvestmentPortfolio({ portfolio, onUpdatePortfolio, sip, onUpdateSip }) {
+  const tooltipStyle = useTooltipStyle()
+  const [editCell, setEditCell] = useState(null) // { pi, field, val }
+  const [editingSip, setEditingSip] = useState(false)
+  const [sipVal, setSipVal] = useState(String(sip))
+
+  const totalInvested = portfolio.reduce((s, p) => s + p.invested, 0)
+  const totalCurrent  = portfolio.reduce((s, p) => s + p.current, 0)
+  const totalGain     = totalCurrent - totalInvested
+  const totalReturnPct = totalInvested > 0 ? ((totalGain / totalInvested) * 100).toFixed(1) : '0.0'
+
+  function commitCell(pi, field, raw) {
+    const val = Math.max(0, parseFloat(raw) || 0)
+    const next = portfolio.map((p, i) => i !== pi ? p : { ...p, [field]: val })
+    onUpdatePortfolio(next)
+    setEditCell(null)
+  }
+
+  function EditableAmt({ pi, field, value, color }) {
+    const isEd = editCell?.pi === pi && editCell?.field === field
+    if (isEd) return (
+      <div className="flex items-center gap-0.5">
+        <span className="text-xs text-gray-500">₹</span>
+        <input type="number"
+          className="w-20 text-right text-xs font-bold bg-white border border-indigo-300 rounded-lg px-1.5 py-0.5 focus:outline-none"
+          style={{ color }}
+          value={editCell.val}
+          onChange={e => setEditCell(ec => ({ ...ec, val: e.target.value }))}
+          onBlur={() => commitCell(pi, field, editCell.val)}
+          onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditCell(null) }}
+          autoFocus
+        />
+      </div>
+    )
+    return (
+      <button onClick={() => setEditCell({ pi, field, val: value })}
+        className="text-xs font-bold hover:opacity-70 transition-opacity"
+        style={{ color }}>
+        ₹{Number(value).toLocaleString()}
+      </button>
+    )
+  }
+
+  const barData = portfolio.map(p => ({
+    name: p.platform,
+    invested: p.invested,
+    current: p.current,
+  }))
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Investment Portfolio</div>
+            <div className="text-3xl font-black text-gray-800">₹{totalCurrent.toLocaleString()}</div>
+            <div className="text-xs text-gray-500 mt-0.5">current value · ₹{totalInvested.toLocaleString()} invested</div>
+          </div>
+          <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 border ${totalGain >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-red-50 border-red-100 text-red-500'}`}>
+            {totalGain >= 0 ? '▲' : '▼'} ₹{Math.abs(totalGain).toLocaleString()} ({totalReturnPct}%)
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100">
+            <div className="text-xs text-gray-400">Invested</div>
+            <div className="text-sm font-bold text-gray-700">₹{totalInvested.toLocaleString()}</div>
+          </div>
+          <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-100">
+            <div className="text-xs text-gray-400">Current</div>
+            <div className="text-sm font-bold text-emerald-600">₹{totalCurrent.toLocaleString()}</div>
+          </div>
+          <div className={`rounded-xl p-2.5 border ${totalGain >= 0 ? 'bg-indigo-50 border-indigo-100' : 'bg-red-50 border-red-100'}`}>
+            <div className="text-xs text-gray-400">Total return</div>
+            <div className={`text-sm font-bold ${totalGain >= 0 ? 'text-indigo-600' : 'text-red-500'}`}>+{totalReturnPct}%</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Platform cards */}
+      <div className="grid grid-cols-2 gap-3">
+        {portfolio.map((p, pi) => {
+          const gain = p.current - p.invested
+          const pct  = p.invested > 0 ? ((gain / p.invested) * 100).toFixed(1) : '0.0'
+          return (
+            <div key={p.platform} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-base">{p.emoji}</span>
+                <span className="text-xs font-bold text-gray-700">{p.platform}</span>
+              </div>
+              <div className="text-xs text-gray-400 mb-0.5">current</div>
+              <EditableAmt pi={pi} field="current" value={p.current} color={p.color} />
+              <div className="mt-1 text-xs text-gray-500">
+                invested: <EditableAmt pi={pi} field="invested" value={p.invested} color="#6b7280" />
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2 mb-1.5">
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${Math.min(100, (p.current / Math.max(p.current * 1.2, p.invested * 1.3)) * 100)}%`, background: p.color }} />
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">{pct}% return</span>
+                <span className={`text-xs font-bold ${gain >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {gain >= 0 ? '+' : ''}₹{gain.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Returns bar chart */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="mb-3">
+          <h3 className="text-gray-700 font-semibold text-sm">Invested vs Current Value</h3>
+          <div className="text-xs text-gray-400">tap values in cards above to update</div>
+        </div>
+        <ResponsiveContainer width="100%" height={120}>
+          <BarChart data={barData} barGap={4} barCategoryGap="35%">
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="name" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+            <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={48}
+              tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
+            <Tooltip contentStyle={tooltipStyle}
+              formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name === 'invested' ? 'Invested' : 'Current value']} />
+            <Bar dataKey="invested" fill="#e0e7ff" radius={[3, 3, 0, 0]} name="invested" />
+            <Bar dataKey="current" radius={[3, 3, 0, 0]} name="current">
+              {barData.map((_, i) => <Cell key={i} fill={portfolio[i].color} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="flex gap-4 mt-1.5 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-100" /><span>Invested</span></div>
+          {portfolio.map(p => (
+            <div key={p.platform} className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm" style={{ background: p.color }} />
+              <span>{p.platform}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Monthly SIP */}
+      <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Monthly SIP</div>
+          {!editingSip && (
+            <button onClick={() => { setEditingSip(true); setSipVal(String(sip)) }}
+              className="text-xs text-indigo-500 font-semibold hover:text-indigo-700">edit</button>
+          )}
+        </div>
+        {editingSip ? (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-gray-500 font-bold">₹</span>
+            <input type="number"
+              className="flex-1 text-2xl font-black text-indigo-700 bg-white border border-indigo-300 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              value={sipVal}
+              onChange={e => setSipVal(e.target.value)}
+              onBlur={() => {
+                const v = Math.max(0, parseInt(sipVal) || 0)
+                onUpdateSip(v); setEditingSip(false)
+              }}
+              onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditingSip(false) }}
+              autoFocus
+            />
+            <span className="text-gray-500 text-sm">/ mo</span>
+          </div>
+        ) : (
+          <div className="text-3xl font-black text-indigo-700 mt-1">
+            ₹{sip.toLocaleString()}<span className="text-base font-normal text-indigo-400"> / month</span>
+          </div>
+        )}
+        <div className="text-xs text-gray-500 mt-1.5">invested from monthly surplus · reduces bank savings by same amount</div>
+      </div>
+    </div>
+  )
+}
+
+// ── Investment plan + combined projection ─────────────────────────────────────
+const SCENARIOS = [
+  { label: '10% p.a.', rate: 10, color: '#94a3b8' },
+  { label: '15% p.a.', rate: 15, color: '#6366f1' },
+  { label: '20% p.a.', rate: 20, color: '#10b981' },
+]
+
+function InvestmentPlan({ logs, varMonthlyBudget, sip, portfolio }) {
+  const tooltipStyle = useTooltipStyle()
+
+  const startBalance       = Number(logs.find(l => l.account_balance)?.account_balance || 0)
+  const totalCurrentPortfolio = portfolio.reduce((s, p) => s + p.current, 0)
+  const totalMonthlyOut    = varMonthlyBudget + FIXED_MONTHLY + sip
+  const monthlySaving      = MONTHLY_SALARY - totalMonthlyOut  // goes to bank
+  const nMonths            = PROJ_MONTHS.length
+
+  // Month-by-month data for stacked area chart (15% CAGR as main scenario)
+  const MAIN_RATE = 15
+  const chartData = PROJ_MONTHS.map((month, i) => {
+    const n = i + 1
+    const savings   = Math.round(startBalance + monthlySaving * n)
+    const portfolio_ = Math.round(lumpFV(totalCurrentPortfolio, MAIN_RATE, n) + sipFV(sip, MAIN_RATE, n))
+    return { month, savings, portfolio: portfolio_, total: savings + portfolio_ }
+  })
+
+  // Final totals for each scenario
+  const finalScenarios = SCENARIOS.map(s => {
+    const savings    = Math.round(startBalance + monthlySaving * nMonths)
+    const portfolio_ = Math.round(lumpFV(totalCurrentPortfolio, s.rate, nMonths) + sipFV(sip, s.rate, nMonths))
+    return { ...s, savings, portfolio: portfolio_, total: savings + portfolio_ }
+  })
+
+  const mainCase = finalScenarios.find(s => s.rate === 15)
+  const onTrack  = mainCase?.total >= TOTAL_GOAL
+
+  return (
+    <div className="space-y-3">
+      {/* Goal overview */}
+      <div className={`rounded-2xl p-4 border ${onTrack ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Combined Goal</div>
+            <div className="text-3xl font-black text-gray-800">₹6,00,000</div>
+            <div className="text-xs text-gray-400 mt-0.5">savings + investments · by April 2027</div>
+          </div>
+          <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 ${onTrack ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'}`}>
+            {onTrack ? '✓ Achievable' : '⚠ Stretch goal'}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {finalScenarios.map(s => (
+            <div key={s.label} className="bg-white rounded-xl p-2.5 border border-gray-100 text-center">
+              <div className="text-xs text-gray-400">{s.label}</div>
+              <div className={`text-sm font-bold ${s.total >= TOTAL_GOAL ? 'text-emerald-600' : 'text-gray-600'}`}>
+                ₹{(s.total / 1000).toFixed(0)}k
+              </div>
+              <div className={`text-xs font-semibold ${s.total >= TOTAL_GOAL ? 'text-emerald-500' : 'text-orange-500'}`}>
+                {s.total >= TOTAL_GOAL ? '✓ hits ₹6L' : `₹${Math.round((TOTAL_GOAL - s.total) / 1000)}k short`}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2.5 bg-white rounded-xl p-2.5 border border-gray-100">
+          <div className="text-xs font-semibold text-gray-600">
+            At 15% CAGR: ₹{mainCase?.savings.toLocaleString()} bank + ₹{mainCase?.portfolio.toLocaleString()} portfolio = ₹{mainCase?.total.toLocaleString()}
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            ₹{sip.toLocaleString()}/mo SIP · ₹{monthlySaving.toLocaleString()}/mo to bank · existing ₹{totalCurrentPortfolio.toLocaleString()} portfolio grows
+          </div>
+        </div>
+      </div>
+
+      {/* Stacked area chart */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="text-gray-700 font-semibold text-sm">Savings + Portfolio Growth</h3>
+            <div className="text-xs text-gray-400">Jul 2026 → Apr 2027 · 15% CAGR assumed on investments</div>
+          </div>
+          <div className="text-sm font-bold text-indigo-600">
+            ₹{(chartData[chartData.length - 1]?.total / 1000).toFixed(0)}k
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={170}>
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="savGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.05} />
+              </linearGradient>
+              <linearGradient id="portGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#10b981" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="month" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+            <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} width={48}
+              tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
+            <Tooltip contentStyle={tooltipStyle}
+              formatter={(v, name) => [`₹${Number(v).toLocaleString()}`,
+                name === 'savings' ? 'Bank savings' : 'Portfolio value']} />
+            <ReferenceLine y={TOTAL_GOAL} stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: '₹6L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
+            <Area type="monotone" dataKey="savings"   stackId="1" stroke="#6366f1" strokeWidth={1.5} fill="url(#savGrad)"  name="savings" />
+            <Area type="monotone" dataKey="portfolio" stackId="1" stroke="#10b981" strokeWidth={1.5} fill="url(#portGrad)" name="portfolio" />
+          </AreaChart>
+        </ResponsiveContainer>
+        <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Bank savings</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Portfolio (SIP + growth)</span></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-0 border-t-2 border-dashed border-amber-400" />
+            <span>₹6L goal</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Scenario comparison bars */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <h3 className="text-gray-700 font-semibold text-sm mb-1">Return Scenario — Apr 2027</h3>
+        <div className="text-xs text-gray-400 mb-3">how much the portfolio matters at different CAGR rates</div>
+        <div className="space-y-3.5">
+          {finalScenarios.map(s => {
+            const pct = Math.min(100, Math.round(s.total / TOTAL_GOAL * 100))
+            const savPct = Math.min(100, Math.round(s.savings / TOTAL_GOAL * 100))
+            const portPct = Math.min(100 - savPct, Math.round(s.portfolio / TOTAL_GOAL * 100))
+            return (
+              <div key={s.label}>
+                <div className="flex justify-between items-center mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-600">{s.label}</span>
+                    <span className="text-xs text-gray-400">portfolio ₹{s.portfolio.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-700">₹{(s.total/1000).toFixed(0)}k</span>
+                    <span className={`text-xs font-bold ${s.total >= TOTAL_GOAL ? 'text-emerald-600' : 'text-orange-500'}`}>{pct}%</span>
+                  </div>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                  <div className="h-full rounded-l-full transition-all duration-700" style={{ width: `${savPct}%`, background: '#6366f1' }} />
+                  <div className="h-full rounded-r-full transition-all duration-700" style={{ width: `${portPct}%`, background: s.color, opacity: 0.85 }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex gap-4 mt-3 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Bank savings</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Portfolio (higher CAGR)</span></div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-gray-50 text-xs text-gray-500">
+          Based on ₹{sip.toLocaleString()}/mo SIP · ₹{totalCurrentPortfolio.toLocaleString()} existing portfolio · ₹{monthlySaving.toLocaleString()}/mo to bank
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Balance / spend projection ────────────────────────────────────────────────
-function buildBalanceProjection(logs, varMonthlyBudget) {
+function buildBalanceProjection(logs, varMonthlyBudget, sip) {
   const today        = new Date()
   const startBalance = Number(logs.find(l => l.account_balance)?.account_balance || 0)
   const spendByMonth = {}
@@ -343,7 +716,7 @@ function buildBalanceProjection(logs, varMonthlyBudget) {
     }
 
     const openBal = balance
-    balance = balance + MONTHLY_SALARY - FIXED_MONTHLY - varSpend
+    balance = balance + MONTHLY_SALARY - FIXED_MONTHLY - sip - varSpend
     const closeBal = Math.round(balance)
     const over     = varSpend > varMonthlyBudget
     const nextMo   = mo === 11 ? new Date(y + 1, 0, 8) : new Date(y, mo + 1, 8)
@@ -360,10 +733,10 @@ function buildBalanceProjection(logs, varMonthlyBudget) {
   return rows
 }
 
-function BalanceProjection({ logs, varMonthlyBudget }) {
+function BalanceProjection({ logs, varMonthlyBudget, sip }) {
   const tooltipStyle = useTooltipStyle()
   const dark         = useDark()
-  const rows         = buildBalanceProjection(logs, varMonthlyBudget)
+  const rows         = buildBalanceProjection(logs, varMonthlyBudget, sip)
   const current      = rows.find(r => r.isCurrentMonth)
   const chartData    = rows.map(r => ({ month: r.month, spend: r.varSpend, type: r.spendType, over: r.over }))
 
@@ -400,17 +773,17 @@ function BalanceProjection({ logs, varMonthlyBudget }) {
               <div className={`text-sm font-bold ${(current.dailyRate || 0) > GOALS.dailyBudget ? 'text-red-500' : 'text-indigo-600'}`}>
                 ₹{Math.round(current.dailyRate || 0)}
               </div>
-              <div className="text-xs text-gray-300">budget ₹{GOALS.dailyBudget}</div>
+              <div className="text-xs text-gray-500">budget ₹{GOALS.dailyBudget}</div>
             </div>
             <div className="bg-white rounded-xl p-2.5 border border-gray-100">
               <div className="text-xs text-gray-400">Month-end est.</div>
               <div className={`text-sm font-bold ${current.over ? 'text-red-500' : 'text-indigo-600'}`}>₹{current.varSpend.toLocaleString()}</div>
-              <div className="text-xs text-gray-300">budget ₹{varMonthlyBudget.toLocaleString()}</div>
+              <div className="text-xs text-gray-500">budget ₹{varMonthlyBudget.toLocaleString()}</div>
             </div>
             <div className="bg-white rounded-xl p-2.5 border border-gray-100">
               <div className="text-xs text-gray-400">Closing bal.</div>
               <div className="text-sm font-bold text-gray-700">₹{current.closeBal.toLocaleString()}</div>
-              <div className="text-xs text-gray-300">report {current.reportStr}</div>
+              <div className="text-xs text-gray-500">report {current.reportStr}</div>
             </div>
           </div>
           <div className="mt-2.5 bg-white rounded-xl p-2.5 border border-gray-100">
@@ -467,7 +840,7 @@ function BalanceProjection({ logs, varMonthlyBudget }) {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
           <h3 className="text-gray-700 font-semibold text-sm">Month-by-Month Balance</h3>
-          <span className="text-xs text-gray-400">subs ₹{FIXED_MONTHLY.toLocaleString()}/mo</span>
+          <span className="text-xs text-gray-400">subs + SIP ₹{(FIXED_MONTHLY + sip).toLocaleString()}/mo</span>
         </div>
         <div className="divide-y divide-gray-50">
           {rows.map(r => (
@@ -484,7 +857,7 @@ function BalanceProjection({ logs, varMonthlyBudget }) {
                       : r.over ? `+₹${(r.varSpend - varMonthlyBudget).toLocaleString()} over`
                       : `₹${(varMonthlyBudget - r.varSpend).toLocaleString()} under`}
                   </span>
-                  {r.spendType === 'projected' && <span className="text-xs text-gray-300">est.</span>}
+                  {r.spendType === 'projected' && <span className="text-xs text-gray-400">est.</span>}
                 </div>
                 <div className="text-right shrink-0 ml-2">
                   <div className={`text-xs font-bold ${r.spendType === 'budgeted' ? 'text-gray-400' : r.over ? 'text-red-500' : 'text-gray-700'}`}>
@@ -497,7 +870,7 @@ function BalanceProjection({ logs, varMonthlyBudget }) {
           ))}
         </div>
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-          <span className="text-xs text-gray-400">+₹75k − ₹{FIXED_MONTHLY.toLocaleString()} subs − variable = closing</span>
+          <span className="text-xs text-gray-400">+₹75k − ₹{FIXED_MONTHLY.toLocaleString()} subs − ₹{sip.toLocaleString()} SIP − variable = closing</span>
           <span className="text-xs font-bold text-gray-500">Apr '27: ₹{rows[rows.length - 1]?.closeBal.toLocaleString()}</span>
         </div>
       </div>
@@ -537,11 +910,24 @@ export default function Finance({ logs }) {
   const tooltipStyle = useTooltipStyle()
 
   const [budgetCats, setBudgetCats] = useState(loadBudgetCats)
+  const [portfolio,  setPortfolio]  = useState(loadPortfolio)
+  const [sip,        setSip]        = useState(loadSip)
+
   const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
   function handleBudgetUpdate(next) {
     setBudgetCats(next)
     localStorage.setItem('budgetCats', JSON.stringify(next))
+  }
+
+  function handlePortfolioUpdate(next) {
+    setPortfolio(next)
+    localStorage.setItem('portfolio', JSON.stringify(next))
+  }
+
+  function handleSipUpdate(val) {
+    setSip(val)
+    localStorage.setItem('monthlySIP', String(val))
   }
 
   const logsWithSpend = logs.filter(l => l.spending?.length)
@@ -558,11 +944,39 @@ export default function Finance({ logs }) {
   return (
     <div className="space-y-3 fade-up">
 
-      <SavingsProjection logs={logs} varMonthlyBudget={varMonthlyBudget} />
+      <SavingsProjection logs={logs} varMonthlyBudget={varMonthlyBudget} sip={sip} />
 
       <BudgetBreakdown cats={budgetCats} onUpdate={handleBudgetUpdate} />
 
-      <BalanceProjection logs={logs} varMonthlyBudget={varMonthlyBudget} />
+      {/* ── Investment section ── */}
+      <div className="flex items-center gap-2 pt-1">
+        <div className="flex-1 h-px bg-gray-100" />
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wide px-2">📈 Investments</span>
+        <div className="flex-1 h-px bg-gray-100" />
+      </div>
+
+      <InvestmentPortfolio
+        portfolio={portfolio}
+        onUpdatePortfolio={handlePortfolioUpdate}
+        sip={sip}
+        onUpdateSip={handleSipUpdate}
+      />
+
+      <InvestmentPlan
+        logs={logs}
+        varMonthlyBudget={varMonthlyBudget}
+        sip={sip}
+        portfolio={portfolio}
+      />
+
+      {/* ── Balance flow ── */}
+      <div className="flex items-center gap-2 pt-1">
+        <div className="flex-1 h-px bg-gray-100" />
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wide px-2">💳 Cash flow</span>
+        <div className="flex-1 h-px bg-gray-100" />
+      </div>
+
+      <BalanceProjection logs={logs} varMonthlyBudget={varMonthlyBudget} sip={sip} />
 
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Total Variable Spend — All Time</div>
@@ -658,7 +1072,7 @@ export default function Finance({ logs }) {
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CATEGORY_COLORS[s.category] || '#94a3b8' }} />
                         <span className="text-gray-600 text-xs">{s.item}</span>
-                        <span className="text-gray-300 text-xs">{s.category}</span>
+                        <span className="text-gray-400 text-xs">{s.category}</span>
                       </div>
                       <span className="text-gray-700 text-xs font-medium">₹{s.amount}</span>
                     </div>
