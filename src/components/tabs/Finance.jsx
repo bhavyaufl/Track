@@ -5,8 +5,17 @@ import { useTooltipStyle, useDark } from '../../lib/DarkContext'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MONTHLY_SALARY = 75000
-const TOTAL_GOAL     = 550000   // ₹5.5L savings + investments
+const TOTAL_GOAL     = 500000   // ₹5L savings + investments (excl. vacation fund)
 const N_MONTHS       = 10       // Jul 2026 → Apr 2027
+
+// ── Vacation fund ─────────────────────────────────────────────────────────────
+const VACATION_MONTHLY = 10000   // ₹10k/mo → separate vacation account
+const VACATION_MONTHS  = 6       // Jul → Dec (covers both trips)
+const VACATION_TOTAL   = VACATION_MONTHLY * VACATION_MONTHS  // ₹60,000
+const VACATIONS = [
+  { name: 'Goa',          month: 'Aug', emoji: '🏖️', budget: 20000, desc: 'Aug trip · 2 months saved' },
+  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 40000, desc: 'Dec trip · 4 months saved' },
+]
 
 const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
 
@@ -22,7 +31,7 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'PhonePe MF', invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
   { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
 ]
-const DEFAULT_MONTHLY_SIP  = 31000   // ₹75k − ₹2,338 subs − ₹20,000 savings − ₹21,662 var
+const DEFAULT_MONTHLY_SIP  = 26500   // ₹75k − ₹2,338 subs − ₹20k savings − ₹10k vacation − ₹16,162 var
 const DEFAULT_SAVINGS_BAL  = 20000   // dedicated savings account — first ₹20k deposited Jul '26
 
 function loadPortfolio() {
@@ -30,8 +39,15 @@ function loadPortfolio() {
   catch { return DEFAULT_PORTFOLIO }
 }
 function loadSip() {
-  try { return Number(localStorage.getItem('monthlySIP_v3')) || DEFAULT_MONTHLY_SIP }
+  try { return Number(localStorage.getItem('monthlySIP_v4')) || DEFAULT_MONTHLY_SIP }
   catch { return DEFAULT_MONTHLY_SIP }
+}
+function loadVacBal() {
+  try {
+    const v = localStorage.getItem('vacationBal')
+    return v !== null ? Number(v) : 0
+  }
+  catch { return 0 }
 }
 function loadSavingsBal() {
   try {
@@ -56,21 +72,21 @@ function lumpFV(amount, rateAnnual, months) {
 // ── Budget categories ─────────────────────────────────────────────────────────
 const DEFAULT_BUDGET_CATS = [
   { cat: 'Food', emoji: '🛒', color: '#10b981', sub: [
-    { label: 'Home groceries', amount: 6600, note: '~₹1,660/wk · chicken, eggs, yogurt, shakes, Diet Coke, pantry' },
-    { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match' },
+    { label: 'Home groceries', amount: 5500, note: '~₹1,375/wk · chicken, eggs, yogurt, shakes, Diet Coke' },
+    { label: 'Office canteen', amount: 1500, note: '5 days × ₹75 × 4 wks' },
   ]},
   { cat: 'Outing', emoji: '🍽️', color: '#6366f1', sub: [
-    { label: 'Dining / café', amount: 5000, note: '~2–3 meals out/wk · bit more breathing room' },
-    { label: 'Activities',    amount: 4000, note: 'Movies, turf, events, etc.' },
+    { label: 'Dining / café', amount: 3500, note: '~2 meals out/wk' },
+    { label: 'Activities',    amount: 2500, note: 'Movies, turf, events' },
   ]},
   { cat: 'Misc', emoji: '🎲', color: '#f59e0b', sub: [
     { label: 'Petrol',        amount: 1900, note: 'Bike fuel · commute + errands' },
     { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
-    { label: 'Sundry',        amount: 1362, note: 'Anything else' },
+    { label: 'Sundry',        amount: 762,  note: 'Anything else' },
   ]},
 ]
 function loadBudgetCats() {
-  try { return JSON.parse(localStorage.getItem('budgetCats_v2')) || DEFAULT_BUDGET_CATS }
+  try { return JSON.parse(localStorage.getItem('budgetCats_v3')) || DEFAULT_BUDGET_CATS }
   catch { return DEFAULT_BUDGET_CATS }
 }
 
@@ -98,7 +114,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
   const totalPortfolioCurrent = portfolio.reduce((s, p) => s + p.current, 0)
   const currentWealth         = startBalance + totalPortfolioCurrent
 
-  const totalMonthlyOut = varMonthlyBudget + FIXED_MONTHLY + sip
+  const totalMonthlyOut = varMonthlyBudget + FIXED_MONTHLY + sip + VACATION_MONTHLY
   const monthlyToBank   = MONTHLY_SALARY - totalMonthlyOut
 
   // Projected at 15% CAGR (main scenario)
@@ -137,7 +153,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Wealth Goal · Apr 2027</div>
-            <div className="text-3xl font-black text-gray-800">₹5,50,000</div>
+            <div className="text-3xl font-black text-gray-800">₹5,00,000</div>
             <div className="text-xs text-gray-500 mt-0.5">dedicated savings account + investment portfolio · 10 salary credits of ₹75k</div>
           </div>
           <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 ${onTrack ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'}`}>
@@ -159,7 +175,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
           </div>
           <div className="flex justify-between text-xs mt-1 text-gray-400">
             <span>₹0</span>
-            <span>₹5.5L</span>
+            <span>₹5L</span>
           </div>
         </div>
 
@@ -258,7 +274,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
             <Tooltip contentStyle={tooltipStyle}
               formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name === 'bank' ? 'Bank balance' : 'Portfolio value']} />
             <ReferenceLine y={TOTAL_GOAL} stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: '₹5.5L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
+              label={{ value: '₹5L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
             <Area type="monotone" dataKey="bank"        stackId="1" stroke="#6366f1" strokeWidth={1.5} fill="url(#bankGrad)" name="bank" />
             <Area type="monotone" dataKey="investments" stackId="1" stroke="#10b981" strokeWidth={1.5} fill="url(#invGrad)"  name="investments" />
           </AreaChart>
@@ -266,7 +282,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
         <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Bank balance</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Portfolio (SIP + returns)</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-4 h-0 border-t-2 border-dashed border-amber-400" /><span>₹5.5L goal</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 h-0 border-t-2 border-dashed border-amber-400" /><span>₹5L goal</span></div>
         </div>
       </div>
 
@@ -318,18 +334,19 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 2 — Monthly Allocation (where every rupee goes)
 // ─────────────────────────────────────────────────────────────────────────────
-function MonthlyAllocation({ varMonthlyBudget, sip, logs }) {
+function MonthlyAllocation({ varMonthlyBudget, sip, logs, vacation }) {
   const tooltipStyle = useTooltipStyle()
   const logsWithSpend  = logs.filter(l => l.spending?.length)
   const totalSpend     = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
   const avgMonthlyActual = logsWithSpend.length ? Math.round(totalSpend / logsWithSpend.length * 30) : 0
-  const totalMonthlyOut  = varMonthlyBudget + FIXED_MONTHLY + sip
+  const totalMonthlyOut  = varMonthlyBudget + FIXED_MONTHLY + sip + (vacation || 0)
   const monthlyToBank    = Math.max(0, MONTHLY_SALARY - totalMonthlyOut)
 
   const allocData = [
-    { name: 'Savings A/c',  value: monthlyToBank,       color: '#10b981' },
-    { name: 'SIP',          value: sip,                 color: '#6366f1' },
-    { name: 'Variable',     value: varMonthlyBudget,    color: '#f59e0b' },
+    { name: 'Savings A/c',  value: monthlyToBank,           color: '#10b981' },
+    { name: 'SIP',          value: sip,                     color: '#6366f1' },
+    { name: 'Vacation',     value: vacation || 0,           color: '#f472b6' },
+    { name: 'Variable',     value: varMonthlyBudget,        color: '#f59e0b' },
     { name: 'Subs',         value: FIXED_MONTHLY,       color: '#06b6d4' },
   ].filter(d => d.value > 0)
 
@@ -381,6 +398,15 @@ function MonthlyAllocation({ varMonthlyBudget, sip, logs }) {
           </div>
           <span className="text-sm font-semibold text-emerald-600">−₹{monthlyToBank.toLocaleString()}</span>
         </div>
+        {vacation > 0 && (
+          <div className="flex items-center justify-between py-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Vacation fund ✈️</span>
+              <span className="text-xs bg-pink-50 text-pink-600 font-semibold px-1.5 py-0.5 rounded">Jul–Dec</span>
+            </div>
+            <span className="text-sm font-semibold text-pink-500">−₹{vacation.toLocaleString()}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between py-0.5 border-t border-gray-50 mt-1 pt-1.5">
           <div>
             <span className="text-sm text-gray-600">Variable spend</span>
@@ -486,7 +512,111 @@ function BudgetBreakdown({ cats, onUpdate }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 4 — Investment Portfolio (current state + editable + SIP)
+// SECTION 4 — Vacation Fund
+// ─────────────────────────────────────────────────────────────────────────────
+function VacationFund({ vacBal, onUpdateVacBal }) {
+  const [editing, setEditing] = useState(false)
+  const [balVal,  setBalVal]  = useState(String(vacBal))
+
+  const pct      = Math.min(100, Math.round(vacBal / VACATION_TOTAL * 100))
+  const goaPct   = Math.min(100, Math.round(vacBal / VACATIONS[0].budget * 100))
+  const lakshPct = Math.min(100, Math.round(Math.max(0, vacBal - VACATIONS[0].budget) / VACATIONS[1].budget * 100))
+
+  const goaReady   = vacBal >= VACATIONS[0].budget
+  const lakshReady = vacBal >= VACATION_TOTAL
+  const monthsSaved = Math.round(vacBal / VACATION_MONTHLY)
+
+  return (
+    <div className="space-y-3">
+      {/* Main fund card */}
+      <div className="bg-pink-50 rounded-2xl p-4 border border-pink-100">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Vacation Fund ✈️</div>
+            <div className="text-3xl font-black text-gray-800">₹{VACATION_TOTAL.toLocaleString()}</div>
+            <div className="text-xs text-gray-500 mt-0.5">₹{VACATION_MONTHLY.toLocaleString()}/mo × 6 months (Jul–Dec)</div>
+          </div>
+          <div className="px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 bg-pink-500 text-white">
+            {pct}% saved
+          </div>
+        </div>
+
+        {/* Current balance chip */}
+        <div className="bg-white rounded-xl p-2.5 border border-pink-100 mb-3">
+          <div className="text-xs text-gray-400 mb-0.5">Vacation account balance</div>
+          {editing ? (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-500">₹</span>
+              <input type="number"
+                className="flex-1 text-lg font-black text-pink-600 bg-pink-50 border border-pink-300 rounded-lg px-2 py-0.5 focus:outline-none"
+                value={balVal}
+                onChange={e => setBalVal(e.target.value)}
+                onBlur={() => { onUpdateVacBal(Math.max(0, Number(balVal) || 0)); setEditing(false) }}
+                onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditing(false) }}
+                autoFocus />
+            </div>
+          ) : (
+            <button onClick={() => { setEditing(true); setBalVal(String(vacBal)) }}
+              className="text-2xl font-black text-pink-600 hover:text-pink-800 transition-colors text-left">
+              ₹{vacBal.toLocaleString()}
+            </button>
+          )}
+          <div className="text-xs text-gray-400 mt-0.5">tap to update · {monthsSaved} of 6 months deposited</div>
+        </div>
+
+        {/* Overall progress */}
+        <div className="mb-1.5">
+          <div className="flex justify-between text-xs mb-1.5">
+            <span className="text-gray-500">₹{vacBal.toLocaleString()} saved</span>
+            <span className="font-semibold text-pink-600">₹{(VACATION_TOTAL - vacBal).toLocaleString()} to go</span>
+          </div>
+          <div className="h-3 bg-white rounded-full overflow-hidden border border-pink-100">
+            <div className="h-full rounded-full transition-all duration-700 bg-pink-400"
+              style={{ width: `${pct}%` }} />
+          </div>
+          <div className="flex justify-between text-xs mt-1 text-gray-400">
+            <span>₹0</span>
+            <span>₹{(VACATION_TOTAL / 1000).toFixed(0)}k</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Trip milestones */}
+      <div className="grid grid-cols-2 gap-3">
+        {VACATIONS.map((v, i) => {
+          const ready   = i === 0 ? goaReady : lakshReady
+          const tripPct = i === 0 ? goaPct : lakshPct
+          const saved   = i === 0 ? Math.min(vacBal, v.budget) : Math.max(0, vacBal - VACATIONS[0].budget)
+          return (
+            <div key={v.name} className={`rounded-2xl p-3.5 border ${ready ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-gray-100'} shadow-sm`}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-xl">{v.emoji}</span>
+                <div>
+                  <div className="text-xs font-bold text-gray-700">{v.name}</div>
+                  <div className="text-xs text-gray-400">{v.month}</div>
+                </div>
+              </div>
+              <div className={`text-base font-black mb-0.5 ${ready ? 'text-emerald-600' : 'text-gray-700'}`}>
+                ₹{v.budget.toLocaleString()}
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
+                <div className={`h-full rounded-full transition-all ${ready ? 'bg-emerald-400' : 'bg-pink-400'}`}
+                  style={{ width: `${tripPct}%` }} />
+              </div>
+              <div className="text-xs text-gray-400">{v.desc}</div>
+              <div className={`text-xs font-semibold mt-1 ${ready ? 'text-emerald-600' : 'text-pink-500'}`}>
+                {ready ? '✓ Funded!' : `₹${saved.toLocaleString()} / ₹${v.budget.toLocaleString()}`}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 5 — Investment Portfolio (current state + editable + SIP)
 // ─────────────────────────────────────────────────────────────────────────────
 function InvestmentPortfolio({ portfolio, onUpdatePortfolio, sip, onUpdateSip }) {
   const tooltipStyle = useTooltipStyle()
@@ -904,13 +1034,15 @@ export default function Finance({ logs }) {
   const [portfolio,    setPortfolio]    = useState(loadPortfolio)
   const [sip,          setSip]          = useState(loadSip)
   const [savingsBal,   setSavingsBal]   = useState(loadSavingsBal)
+  const [vacBal,       setVacBal]       = useState(loadVacBal)
 
   const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
-  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v2', JSON.stringify(next)) }
+  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v3', JSON.stringify(next)) }
   function handlePortfolioUpdate(next) { setPortfolio(next); localStorage.setItem('portfolio', JSON.stringify(next)) }
-  function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v3', String(val)) }
+  function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v4', String(val)) }
   function handleSavingsBalUpdate(val) { setSavingsBal(val); localStorage.setItem('savingsAccountBal', String(val)) }
+  function handleVacBalUpdate(val) { setVacBal(val); localStorage.setItem('vacationBal', String(val)) }
 
   const logsWithSpend = logs.filter(l => l.spending?.length)
   const totalSpend    = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
@@ -939,10 +1071,14 @@ export default function Finance({ logs }) {
       <Divider label="💸 Monthly Plan" />
 
       {/* ── Where every rupee goes ── */}
-      <MonthlyAllocation varMonthlyBudget={varMonthlyBudget} sip={sip} logs={logs} />
+      <MonthlyAllocation varMonthlyBudget={varMonthlyBudget} sip={sip} logs={logs} vacation={VACATION_MONTHLY} />
 
       {/* ── Editable variable spend ── */}
       <BudgetBreakdown cats={budgetCats} onUpdate={handleBudgetUpdate} />
+
+      <Divider label="✈️ Vacation Fund" />
+
+      <VacationFund vacBal={vacBal} onUpdateVacBal={handleVacBalUpdate} />
 
       <Divider label="📈 Investments" />
 
