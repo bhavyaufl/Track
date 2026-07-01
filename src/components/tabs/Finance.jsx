@@ -5,7 +5,7 @@ import { useTooltipStyle, useDark } from '../../lib/DarkContext'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MONTHLY_SALARY = 75000
-const TOTAL_GOAL     = 600000   // ₹6L savings + investments
+const TOTAL_GOAL     = 550000   // ₹5.5L savings + investments
 const N_MONTHS       = 10       // Jul 2026 → Apr 2027
 
 const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
@@ -22,7 +22,7 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'PhonePe MF', invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
   { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
 ]
-const DEFAULT_MONTHLY_SIP  = 32762   // ₹75k − ₹2,338 subs − ₹19,900 var − ₹20,000 savings
+const DEFAULT_MONTHLY_SIP  = 31000   // ₹75k − ₹2,338 subs − ₹20,000 savings − ₹21,662 var
 const DEFAULT_SAVINGS_BAL  = 20000   // dedicated savings account — first ₹20k deposited Jul '26
 
 function loadPortfolio() {
@@ -30,7 +30,7 @@ function loadPortfolio() {
   catch { return DEFAULT_PORTFOLIO }
 }
 function loadSip() {
-  try { return Number(localStorage.getItem('monthlySIP_v2')) || DEFAULT_MONTHLY_SIP }
+  try { return Number(localStorage.getItem('monthlySIP_v3')) || DEFAULT_MONTHLY_SIP }
   catch { return DEFAULT_MONTHLY_SIP }
 }
 function loadSavingsBal() {
@@ -60,17 +60,17 @@ const DEFAULT_BUDGET_CATS = [
     { label: 'Office canteen', amount: 1800, note: '6 days × ₹75 × 4 wks · mix & match' },
   ]},
   { cat: 'Outing', emoji: '🍽️', color: '#6366f1', sub: [
-    { label: 'Dining / café', amount: 4000, note: '~2 meals out/wk' },
-    { label: 'Activities',    amount: 3600, note: 'Movies, turf, events, etc.' },
+    { label: 'Dining / café', amount: 5000, note: '~2–3 meals out/wk · bit more breathing room' },
+    { label: 'Activities',    amount: 4000, note: 'Movies, turf, events, etc.' },
   ]},
   { cat: 'Misc', emoji: '🎲', color: '#f59e0b', sub: [
     { label: 'Petrol',        amount: 1900, note: 'Bike fuel · commute + errands' },
     { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
-    { label: 'Sundry',        amount: 1000, note: 'Anything else' },
+    { label: 'Sundry',        amount: 1362, note: 'Anything else' },
   ]},
 ]
 function loadBudgetCats() {
-  try { return JSON.parse(localStorage.getItem('budgetCats')) || DEFAULT_BUDGET_CATS }
+  try { return JSON.parse(localStorage.getItem('budgetCats_v2')) || DEFAULT_BUDGET_CATS }
   catch { return DEFAULT_BUDGET_CATS }
 }
 
@@ -86,7 +86,7 @@ const CATEGORY_EMOJI = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 1 — Wealth Goal (unified ₹6L view)
+// SECTION 1 — Wealth Goal (unified ₹5.5L view)
 // ─────────────────────────────────────────────────────────────────────────────
 function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpdateSavingsBal }) {
   const tooltipStyle = useTooltipStyle()
@@ -137,7 +137,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Wealth Goal · Apr 2027</div>
-            <div className="text-3xl font-black text-gray-800">₹6,00,000</div>
+            <div className="text-3xl font-black text-gray-800">₹5,50,000</div>
             <div className="text-xs text-gray-500 mt-0.5">dedicated savings account + investment portfolio · 10 salary credits of ₹75k</div>
           </div>
           <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 ${onTrack ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'}`}>
@@ -159,7 +159,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
           </div>
           <div className="flex justify-between text-xs mt-1 text-gray-400">
             <span>₹0</span>
-            <span>₹6L</span>
+            <span>₹5.5L</span>
           </div>
         </div>
 
@@ -258,7 +258,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
             <Tooltip contentStyle={tooltipStyle}
               formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name === 'bank' ? 'Bank balance' : 'Portfolio value']} />
             <ReferenceLine y={TOTAL_GOAL} stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: '₹6L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
+              label={{ value: '₹5.5L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
             <Area type="monotone" dataKey="bank"        stackId="1" stroke="#6366f1" strokeWidth={1.5} fill="url(#bankGrad)" name="bank" />
             <Area type="monotone" dataKey="investments" stackId="1" stroke="#10b981" strokeWidth={1.5} fill="url(#invGrad)"  name="investments" />
           </AreaChart>
@@ -266,7 +266,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
         <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Bank balance</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Portfolio (SIP + returns)</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-4 h-0 border-t-2 border-dashed border-amber-400" /><span>₹6L goal</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 h-0 border-t-2 border-dashed border-amber-400" /><span>₹5.5L goal</span></div>
         </div>
       </div>
 
@@ -907,9 +907,9 @@ export default function Finance({ logs }) {
 
   const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
-  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats', JSON.stringify(next)) }
+  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v2', JSON.stringify(next)) }
   function handlePortfolioUpdate(next) { setPortfolio(next); localStorage.setItem('portfolio', JSON.stringify(next)) }
-  function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v2', String(val)) }
+  function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v3', String(val)) }
   function handleSavingsBalUpdate(val) { setSavingsBal(val); localStorage.setItem('savingsAccountBal', String(val)) }
 
   const logsWithSpend = logs.filter(l => l.spending?.length)
