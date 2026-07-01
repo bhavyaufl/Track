@@ -9,12 +9,12 @@ const TOTAL_GOAL     = 500000   // ₹5L savings + investments (excl. vacation f
 const N_MONTHS       = 10       // Jul 2026 → Apr 2027
 
 // ── Vacation fund ─────────────────────────────────────────────────────────────
-const VACATION_MONTHLY = 10000   // ₹10k/mo → separate vacation account
-const VACATION_MONTHS  = 6       // Jul → Dec (covers both trips)
-const VACATION_TOTAL   = 80000   // ₹60k contributions + ₹20k lump (moved from savings start)
+const VACATION_MONTHLY = 8000    // ₹8k/mo · evened over all 10 months (Jul → Apr)
+const VACATION_MONTHS  = 10      // Jul → Apr (full salary period)
+const VACATION_TOTAL   = 80000   // ₹20k lump + ₹60k contributions target
 const VACATIONS = [
-  { name: 'Goa',          month: 'Aug', emoji: '🏖️', budget: 20000, desc: 'Aug trip · 2 months saved' },
-  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 60000, desc: 'Dec trip · ₹20k lump + 4 months' },
+  { name: 'Goa',          month: 'Aug', emoji: '🏖️', budget: 20000, desc: 'Aug trip · funded by lump' },
+  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 60000, desc: 'Dec trip · ₹20k lump + savings' },
 ]
 
 const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
@@ -31,7 +31,7 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'PhonePe MF', invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
   { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
 ]
-const DEFAULT_MONTHLY_SIP  = 26500   // ₹75k − ₹2,338 subs − ₹20k savings − ₹10k vacation − ₹16,162 var
+const DEFAULT_MONTHLY_SIP  = 35662   // ₹75k − ₹2,338 subs − ₹10k savings − ₹8k vacation − ₹19k var
 const DEFAULT_SAVINGS_BAL  = 0       // ₹20k start moved to vacation account
 
 function loadPortfolio() {
@@ -39,7 +39,7 @@ function loadPortfolio() {
   catch { return DEFAULT_PORTFOLIO }
 }
 function loadSip() {
-  try { return Number(localStorage.getItem('monthlySIP_v4')) || DEFAULT_MONTHLY_SIP }
+  try { return Number(localStorage.getItem('monthlySIP_v5')) || DEFAULT_MONTHLY_SIP }
   catch { return DEFAULT_MONTHLY_SIP }
 }
 function loadVacBal() {
@@ -71,22 +71,22 @@ function lumpFV(amount, rateAnnual, months) {
 
 // ── Budget categories ─────────────────────────────────────────────────────────
 const DEFAULT_BUDGET_CATS = [
-  { cat: 'Food', emoji: '🛒', color: '#10b981', sub: [
+  { cat: 'Fixed', emoji: '🔒', color: '#6366f1', sub: [
     { label: 'Home groceries', amount: 5500, note: '~₹1,375/wk · chicken, eggs, yogurt, shakes, Diet Coke' },
     { label: 'Office canteen', amount: 1500, note: '5 days × ₹75 × 4 wks' },
+    { label: 'Petrol',         amount: 1900, note: 'Bike fuel · commute + errands' },
+    { label: 'Personal care',  amount: 1000, note: 'Haircut, toiletries' },
   ]},
-  { cat: 'Outing', emoji: '🍽️', color: '#6366f1', sub: [
-    { label: 'Dining / café', amount: 3500, note: '~2 meals out/wk' },
-    { label: 'Activities',    amount: 2500, note: 'Movies, turf, events' },
+  { cat: 'Outing', emoji: '🍽️', color: '#ec4899', sub: [
+    { label: 'Dining / café', amount: 4500, note: '~2-3 meals out/wk' },
+    { label: 'Activities',    amount: 3000, note: 'Movies, turf, events' },
   ]},
   { cat: 'Misc', emoji: '🎲', color: '#f59e0b', sub: [
-    { label: 'Petrol',        amount: 1900, note: 'Bike fuel · commute + errands' },
-    { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
-    { label: 'Sundry',        amount: 262,  note: 'Anything else' },
+    { label: 'Sundry',        amount: 1600, note: 'Buffer for anything else' },
   ]},
 ]
 function loadBudgetCats() {
-  try { return JSON.parse(localStorage.getItem('budgetCats_v4')) || DEFAULT_BUDGET_CATS }
+  try { return JSON.parse(localStorage.getItem('budgetCats_v5')) || DEFAULT_BUDGET_CATS }
   catch { return DEFAULT_BUDGET_CATS }
 }
 
@@ -402,7 +402,7 @@ function MonthlyAllocation({ varMonthlyBudget, sip, logs, vacation }) {
           <div className="flex items-center justify-between py-0.5">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">Vacation fund ✈️</span>
-              <span className="text-xs bg-pink-50 text-pink-600 font-semibold px-1.5 py-0.5 rounded">Jul–Dec</span>
+              <span className="text-xs bg-pink-50 text-pink-600 font-semibold px-1.5 py-0.5 rounded">Jul–Apr</span>
             </div>
             <span className="text-sm font-semibold text-pink-500">−₹{vacation.toLocaleString()}</span>
           </div>
@@ -1038,9 +1038,9 @@ export default function Finance({ logs }) {
 
   const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
-  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v4', JSON.stringify(next)) }
+  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v5', JSON.stringify(next)) }
   function handlePortfolioUpdate(next) { setPortfolio(next); localStorage.setItem('portfolio', JSON.stringify(next)) }
-  function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v4', String(val)) }
+  function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v5', String(val)) }
   function handleSavingsBalUpdate(val) { setSavingsBal(val); localStorage.setItem('savingsAccountBal_v2', String(val)) }
   function handleVacBalUpdate(val) { setVacBal(val); localStorage.setItem('vacationBal_v2', String(val)) }
 
