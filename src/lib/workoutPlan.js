@@ -61,7 +61,6 @@ export const WORKOUT_GROUPS = {
   push_a: [
     'Bench Press',
     'Incline Bench Press',
-    'Shoulder Press',
     'Lateral Raises',
     'Tricep Pushdown',
   ],
