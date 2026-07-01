@@ -557,29 +557,29 @@ function FitnessExRow({ name, level, goal, logged, color }) {
               <div className="text-xs text-amber-600 font-semibold mt-0.5">⬆ Ready to increase weight</div>
             )}
             {!hasLevel && !isDone && (
-              <div className="text-xs text-gray-400 mt-0.5">Not started — find your starting weight</div>
+              <div className="text-xs text-gray-600 mt-0.5">Not started — find your starting weight</div>
             )}
             {pct != null && !isDone && (
               <div className="mt-1.5 flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 90 ? '#10b981' : color }} />
                 </div>
-                <span className="text-xs text-gray-400 shrink-0">{pct}% to goal</span>
+                <span className="text-xs text-gray-500 shrink-0">{pct}% to goal</span>
               </div>
             )}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-xs font-semibold text-gray-500">{scheme}</div>
+          <div className="text-xs font-semibold text-gray-600">{scheme}</div>
           {hasLevel && !isDone && (
             <div className={`text-base font-bold mt-0.5 ${readyUp ? 'text-amber-600' : 'text-indigo-600'}`}>
-              {level.current_weight} <span className="text-sm font-medium text-gray-400">{level.unit}</span>
+              {level.current_weight} <span className="text-sm font-medium text-gray-500">{level.unit}</span>
             </div>
           )}
           {goal?.goal != null && (
-            <div className="text-xs text-gray-400">→ {goal.goal} {goal.unit}</div>
+            <div className="text-xs text-gray-500">→ {goal.goal} {goal.unit}</div>
           )}
-          {!hasLevel && <div className="text-sm font-bold text-gray-300 mt-0.5">—</div>}
+          {!hasLevel && <div className="text-sm font-bold text-gray-500 mt-0.5">—</div>}
         </div>
       </div>
     </div>

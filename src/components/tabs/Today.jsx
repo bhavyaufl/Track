@@ -487,15 +487,15 @@ function SleepTracker({ log }) {
           { label: 'Duration', val: duration != null ? fmtDur(duration) : '—', sub: durOk === true ? '✓ 7h 30m+' : durOk === false ? `${fmtDur(duration - SLEEP_GOAL_M)} short` : 'goal 7h 30m', ok: durOk },
         ].map(({ label, val, sub, ok }) => (
           <div key={label} className="px-3 py-2.5 text-center">
-            <div className="text-xs text-gray-400 mb-0.5">{label}</div>
-            <div className={`text-sm font-bold ${ok === true ? 'text-emerald-600' : ok === false ? 'text-red-500' : 'text-gray-400'}`}>{val}</div>
-            <div className={`text-xs mt-0.5 ${ok === true ? 'text-emerald-500' : ok === false ? 'text-red-400' : 'text-gray-300'}`}>{sub}</div>
+            <div className="text-xs text-gray-500 mb-0.5">{label}</div>
+            <div className={`text-sm font-bold ${ok === true ? 'text-emerald-600' : ok === false ? 'text-red-500' : 'text-gray-600'}`}>{val}</div>
+            <div className={`text-xs mt-0.5 ${ok === true ? 'text-emerald-500' : ok === false ? 'text-red-400' : 'text-gray-500'}`}>{sub}</div>
           </div>
         ))}
       </div>
 
       {!hasData && (
-        <div className="px-3 pb-2.5 text-center text-xs text-gray-300">Log sleep time during /checkin</div>
+        <div className="px-3 pb-2.5 text-center text-xs text-gray-500">Log sleep time during /checkin</div>
       )}
     </div>
   )
@@ -534,19 +534,19 @@ function ExerciseRow({ name, level, goal, logged }) {
               <div className="text-xs text-amber-600 font-semibold">⬆ Hit 3×12 last session — increase weight today</div>
             )}
             {!isDone && !hasLevel && (
-              <div className="text-xs text-gray-400">First time — start light and find your working weight</div>
+              <div className="text-xs text-gray-600">First time — start light, find your working weight</div>
             )}
           </div>
         </div>
         <div className="text-right shrink-0 ml-2">
-          <div className="text-xs font-semibold text-gray-500">{scheme}</div>
+          <div className="text-xs font-semibold text-gray-600">{scheme}</div>
           {hasLevel && !isDone && (
             <div className={`text-sm font-bold ${readyUp ? 'text-amber-600' : 'text-indigo-600'}`}>
               {level.current_weight} {level.unit}
             </div>
           )}
           {goal?.goal != null && (
-            <div className="text-xs text-gray-400">→ {goal.goal} {goal.unit}</div>
+            <div className="text-xs text-gray-500">→ {goal.goal} {goal.unit}</div>
           )}
         </div>
       </div>
@@ -556,7 +556,7 @@ function ExerciseRow({ name, level, goal, logged }) {
             <div className="h-full rounded-full transition-all"
               style={{ width: `${pct}%`, background: pct >= 90 ? '#10b981' : pct >= 60 ? '#6366f1' : '#a5b4fc' }} />
           </div>
-          <div className="text-xs text-gray-400 mt-0.5">{pct}% to goal</div>
+          <div className="text-xs text-gray-500 mt-0.5">{pct}% to goal</div>
         </div>
       )}
     </div>
