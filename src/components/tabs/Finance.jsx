@@ -11,10 +11,10 @@ const N_MONTHS       = 10       // Jul 2026 → Apr 2027
 // ── Vacation fund ─────────────────────────────────────────────────────────────
 const VACATION_MONTHLY = 10000   // ₹10k/mo → separate vacation account
 const VACATION_MONTHS  = 6       // Jul → Dec (covers both trips)
-const VACATION_TOTAL   = VACATION_MONTHLY * VACATION_MONTHS  // ₹60,000
+const VACATION_TOTAL   = 80000   // ₹60k contributions + ₹20k lump (moved from savings start)
 const VACATIONS = [
   { name: 'Goa',          month: 'Aug', emoji: '🏖️', budget: 20000, desc: 'Aug trip · 2 months saved' },
-  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 40000, desc: 'Dec trip · 4 months saved' },
+  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 60000, desc: 'Dec trip · ₹20k lump + 4 months' },
 ]
 
 const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
@@ -32,7 +32,7 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
 ]
 const DEFAULT_MONTHLY_SIP  = 26500   // ₹75k − ₹2,338 subs − ₹20k savings − ₹10k vacation − ₹16,162 var
-const DEFAULT_SAVINGS_BAL  = 20000   // dedicated savings account — first ₹20k deposited Jul '26
+const DEFAULT_SAVINGS_BAL  = 0       // ₹20k start moved to vacation account
 
 function loadPortfolio() {
   try { return JSON.parse(localStorage.getItem('portfolio')) || DEFAULT_PORTFOLIO }
@@ -44,14 +44,14 @@ function loadSip() {
 }
 function loadVacBal() {
   try {
-    const v = localStorage.getItem('vacationBal')
-    return v !== null ? Number(v) : 0
+    const v = localStorage.getItem('vacationBal_v2')
+    return v !== null ? Number(v) : 20000   // starts with ₹20k lump moved from savings
   }
-  catch { return 0 }
+  catch { return 20000 }
 }
 function loadSavingsBal() {
   try {
-    const v = localStorage.getItem('savingsAccountBal')
+    const v = localStorage.getItem('savingsAccountBal_v2')
     return v !== null ? Number(v) : DEFAULT_SAVINGS_BAL
   }
   catch { return DEFAULT_SAVINGS_BAL }
@@ -82,11 +82,11 @@ const DEFAULT_BUDGET_CATS = [
   { cat: 'Misc', emoji: '🎲', color: '#f59e0b', sub: [
     { label: 'Petrol',        amount: 1900, note: 'Bike fuel · commute + errands' },
     { label: 'Personal care', amount: 1000, note: 'Haircut, toiletries' },
-    { label: 'Sundry',        amount: 762,  note: 'Anything else' },
+    { label: 'Sundry',        amount: 262,  note: 'Anything else' },
   ]},
 ]
 function loadBudgetCats() {
-  try { return JSON.parse(localStorage.getItem('budgetCats_v3')) || DEFAULT_BUDGET_CATS }
+  try { return JSON.parse(localStorage.getItem('budgetCats_v4')) || DEFAULT_BUDGET_CATS }
   catch { return DEFAULT_BUDGET_CATS }
 }
 
@@ -1038,11 +1038,11 @@ export default function Finance({ logs }) {
 
   const varMonthlyBudget = budgetCats.reduce((s, c) => s + c.sub.reduce((ss, sub) => ss + sub.amount, 0), 0)
 
-  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v3', JSON.stringify(next)) }
+  function handleBudgetUpdate(next) { setBudgetCats(next); localStorage.setItem('budgetCats_v4', JSON.stringify(next)) }
   function handlePortfolioUpdate(next) { setPortfolio(next); localStorage.setItem('portfolio', JSON.stringify(next)) }
   function handleSipUpdate(val) { setSip(val); localStorage.setItem('monthlySIP_v4', String(val)) }
-  function handleSavingsBalUpdate(val) { setSavingsBal(val); localStorage.setItem('savingsAccountBal', String(val)) }
-  function handleVacBalUpdate(val) { setVacBal(val); localStorage.setItem('vacationBal', String(val)) }
+  function handleSavingsBalUpdate(val) { setSavingsBal(val); localStorage.setItem('savingsAccountBal_v2', String(val)) }
+  function handleVacBalUpdate(val) { setVacBal(val); localStorage.setItem('vacationBal_v2', String(val)) }
 
   const logsWithSpend = logs.filter(l => l.spending?.length)
   const totalSpend    = logsWithSpend.reduce((s, l) => s + l.spending.reduce((a, e) => a + e.amount, 0), 0)
