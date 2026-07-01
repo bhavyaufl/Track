@@ -596,30 +596,24 @@ function TodayExercisePlan({ log, dayIdx, levels }) {
         )}
       </div>
 
-      {/* Rest day */}
+      {/* Rest day — Mon (gym closed) */}
       {group === 'rest' && (
         <div className="px-3 py-4 text-center">
-          <div className="text-sm text-gray-500 font-medium">Gym is closed today — full recovery</div>
-          <div className="text-xs text-gray-400 mt-1">Use this time to stretch, foam roll, or take a walk</div>
+          <div className="text-sm text-gray-600 font-medium">Gym is closed today — full recovery</div>
+          <div className="text-xs text-gray-500 mt-1">Good day to stretch, foam roll, or go for a walk</div>
         </div>
       )}
 
-      {/* Cardio-only day (Sunday) */}
-      {group === 'cardio' && (
-        <div className="divide-y divide-gray-50">
-          {WORKOUT_GROUPS.cardio.map(name => (
-            <ExerciseRow key={name}
-              name={name}
-              level={levelMap[name]}
-              goal={goalMap[name]}
-              logged={loggedMap[name]}
-            />
-          ))}
+      {/* Buffer day — Fri (flexible) */}
+      {group === 'buffer' && (
+        <div className="px-3 py-4 text-center">
+          <div className="text-sm text-gray-600 font-medium">Flexible day — gym is open</div>
+          <div className="text-xs text-gray-500 mt-1">Use it as a makeup session if you missed one, or take a full rest</div>
         </div>
       )}
 
       {/* Gym day */}
-      {hasGym && group !== 'cardio' && (
+      {hasGym && group !== 'buffer' && group !== 'rest' && (
         <div className="divide-y divide-gray-50">
           {gymExercises.map(name => (
             <ExerciseRow key={name}

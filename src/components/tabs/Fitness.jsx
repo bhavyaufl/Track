@@ -488,24 +488,19 @@ function WeeklyPlan({ levels, logs }) {
           <div className="px-4 py-6 text-center">
             <div className="text-4xl mb-2">😴</div>
             <div className="text-sm font-semibold text-gray-600">Gym is closed — full recovery day</div>
-            <div className="text-xs text-gray-400 mt-1">Stretch, walk, or do active recovery</div>
+            <div className="text-xs text-gray-500 mt-1">Stretch, walk, or do active recovery</div>
           </div>
         )}
 
-        {group === 'cardio' && (
-          <div className="divide-y divide-gray-50">
-            {WORKOUT_GROUPS.cardio.map(name => {
-              const level  = levelMap[name]
-              const goal   = goalMap[name]
-              const logged = loggedMap[name]
-              return (
-                <FitnessExRow key={name} name={name} level={level} goal={goal} logged={logged} color={color} />
-              )
-            })}
+        {group === 'buffer' && (
+          <div className="px-4 py-6 text-center">
+            <div className="text-4xl mb-2">🔄</div>
+            <div className="text-sm font-semibold text-gray-600">Flexible day — gym is open</div>
+            <div className="text-xs text-gray-500 mt-1">Makeup session if you missed one, or take the rest</div>
           </div>
         )}
 
-        {gymExercises.length > 0 && group !== 'cardio' && (
+        {gymExercises.length > 0 && group !== 'rest' && group !== 'buffer' && (
           <div className="divide-y divide-gray-50">
             {gymExercises.map(name => {
               const level  = levelMap[name]
