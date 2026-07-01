@@ -58,6 +58,8 @@ export default function App() {
   const { levels, loading: levelsLoading } = useExerciseLevels()
   const badges = useAchievements()
   const { log: todayLog, loading: todayLoading } = useTodayLog(refreshKey)
+  const yesterdayDate = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  const yesterdayLog  = logs.find(l => l.date === yesterdayDate) || null
 
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('darkMode')
@@ -151,7 +153,7 @@ export default function App() {
         {activeTab === 'log'       && <Log onLogged={refresh} />}
         {activeTab === 'food'      && <Food todayLog={todayLog} />}
         {activeTab === 'dashboard' && <Dashboard logs={logs} levels={levels} badges={badges} todayLog={todayLog} />}
-        {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={logs[0]} onRefresh={refresh} levels={levels} />}
+        {activeTab === 'today'     && <Today log={todayLog} yesterdayLog={yesterdayLog} onRefresh={refresh} levels={levels} />}
         {activeTab === 'fitness'   && <Fitness logs={logs} levels={levels} />}
         {activeTab === 'calories'  && <Calories todayLog={todayLog} logs={logs} onRefresh={refresh} />}
         {activeTab === 'finance'   && <Finance logs={logs} />}

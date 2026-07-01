@@ -903,10 +903,14 @@ function DayView({ log, onRefresh, dayIdx, levels }) {
 export default function Today({ log, yesterdayLog, onRefresh, levels = [] }) {
   const [tab, setTab] = useState('today')
 
+  const fmt = d => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  const todayLabel     = fmt(new Date())
+  const yesterdayLabel = fmt(new Date(Date.now() - 86400000))
+
   return (
     <div className="space-y-2 fade-up">
       <div className="flex gap-1 bg-gray-100/80 rounded-xl p-0.5">
-        {[['today','📊 Today'],['yesterday','📅 Yesterday']].map(([id, label]) => (
+        {[['today', `📊 Today · ${todayLabel}`], ['yesterday', `📅 Yesterday · ${yesterdayLabel}`]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-all ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
