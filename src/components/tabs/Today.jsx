@@ -905,7 +905,8 @@ export default function Today({ log, yesterdayLog, onRefresh, levels = [] }) {
 
   const fmt = d => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
   const todayLabel     = fmt(new Date())
-  const yesterdayLabel = fmt(new Date(Date.now() - 86400000))
+  const _y = new Date(); _y.setDate(_y.getDate() - 1)
+  const yesterdayLabel = fmt(_y)
 
   return (
     <div className="space-y-2 fade-up">

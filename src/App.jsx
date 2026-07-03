@@ -58,7 +58,8 @@ export default function App() {
   const { levels, loading: levelsLoading } = useExerciseLevels()
   const badges = useAchievements()
   const { log: todayLog, loading: todayLoading } = useTodayLog(refreshKey)
-  const yesterdayDate = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  const _yest = new Date(); _yest.setDate(_yest.getDate() - 1)
+  const yesterdayDate = `${_yest.getFullYear()}-${String(_yest.getMonth()+1).padStart(2,'0')}-${String(_yest.getDate()).padStart(2,'0')}`
   const yesterdayLog  = logs.find(l => l.date === yesterdayDate) || null
 
   const [dark, setDark] = useState(() => {
