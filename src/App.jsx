@@ -20,6 +20,7 @@ import History from './components/tabs/History'
 import Log from './components/tabs/Log'
 import Food from './components/tabs/Food'
 import { DarkContext } from './lib/DarkContext'
+import { yesterdayIST } from './lib/dateIST'
 import clsx from 'clsx'
 
 const TABS = [
@@ -58,8 +59,7 @@ export default function App() {
   const { levels, loading: levelsLoading } = useExerciseLevels()
   const badges = useAchievements()
   const { log: todayLog, loading: todayLoading } = useTodayLog(refreshKey)
-  const _yest = new Date(); _yest.setDate(_yest.getDate() - 1)
-  const yesterdayDate = `${_yest.getFullYear()}-${String(_yest.getMonth()+1).padStart(2,'0')}-${String(_yest.getDate()).padStart(2,'0')}`
+  const yesterdayDate = yesterdayIST()
   const yesterdayLog  = logs.find(l => l.date === yesterdayDate) || null
 
   const [dark, setDark] = useState(() => {

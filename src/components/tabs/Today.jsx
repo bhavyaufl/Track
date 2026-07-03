@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { yesterdayIST } from '../../lib/dateIST'
 import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
 import { WEEKLY_PLAN } from '../../lib/mealPlan'
@@ -905,8 +906,7 @@ export default function Today({ log, yesterdayLog, onRefresh, levels = [] }) {
 
   const fmt = d => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
   const todayLabel     = fmt(new Date())
-  const _y = new Date(); _y.setDate(_y.getDate() - 1)
-  const yesterdayLabel = fmt(_y)
+  const yesterdayLabel = fmt(new Date(yesterdayIST()))
 
   return (
     <div className="space-y-2 fade-up">

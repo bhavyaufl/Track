@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, isConfigured } from './supabase'
+import { todayIST } from './dateIST'
 
 function noopQuery() {
   return Promise.resolve({ data: null })
@@ -72,8 +73,7 @@ export function useAchievements() {
 }
 
 export function useTodayLog(refreshKey = 0) {
-  const _d = new Date()
-  const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`
+  const today = todayIST()
   const [log, setLog] = useState(null)
   const [loading, setLoading] = useState(true)
 
