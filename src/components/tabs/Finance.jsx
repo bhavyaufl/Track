@@ -13,8 +13,8 @@ const VACATION_MONTHLY = 8000    // ₹8k/mo · evened over all 10 months (Jul �
 const VACATION_MONTHS  = 10      // Jul → Apr (full salary period)
 const VACATION_TOTAL   = 80000   // ₹20k lump + ₹60k contributions target
 const VACATIONS = [
-  { name: 'Goa',          month: 'Aug', emoji: '🏖️', budget: 20000, desc: 'Aug trip · funded by lump' },
-  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 60000, desc: 'Dec trip · ₹20k lump + savings' },
+  { name: 'Goa',          month: 'Aug', emoji: '🏖️', budget: 35000, desc: 'Aug trip · ₹20k lump + 2 months' },
+  { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 45000, desc: 'Dec trip · months 3–6 saved' },
 ]
 
 const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
