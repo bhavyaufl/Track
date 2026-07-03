@@ -16,7 +16,6 @@ import Fitness from './components/tabs/Fitness'
 import Calories from './components/tabs/Calories'
 import Finance from './components/tabs/Finance'
 import Calendar from './components/tabs/Calendar'
-import History from './components/tabs/History'
 import Log from './components/tabs/Log'
 import Food from './components/tabs/Food'
 import { DarkContext } from './lib/DarkContext'
@@ -24,15 +23,14 @@ import { yesterdayIST } from './lib/dateIST'
 import clsx from 'clsx'
 
 const TABS = [
-  { id: 'log',       emoji: '💬', label: 'Log' },
+  { id: 'log',       emoji: '💬', label: 'Log'       },
   { id: 'dashboard', emoji: '🏠', label: 'Dashboard' },
-  { id: 'today',     emoji: '📊', label: 'Today' },
-  { id: 'food',      emoji: '🥗', label: 'Food' },
-  { id: 'fitness',   emoji: '💪', label: 'Fitness' },
-  { id: 'calories',  emoji: '🔥', label: 'Calories' },
-  { id: 'finance',   emoji: '💰', label: 'Finance' },
-  { id: 'calendar',  emoji: '📅', label: 'Calendar' },
-  { id: 'history',   emoji: '📋', label: 'History' },
+  { id: 'today',     emoji: '📊', label: 'Today'     },
+  { id: 'food',      emoji: '🥗', label: 'Food'      },
+  { id: 'fitness',   emoji: '💪', label: 'Fitness'   },
+  { id: 'calories',  emoji: '🔥', label: 'Calories'  },
+  { id: 'finance',   emoji: '💰', label: 'Finance'   },
+  { id: 'calendar',  emoji: '📅', label: 'Calendar'  },
 ]
 
 function LoadingScreen() {
@@ -123,29 +121,56 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── Tab bar ── fixed 40px directly below header */}
-      <nav className="fixed left-0 right-0 z-10 overflow-x-auto"
-        style={{ top: 52, height: 40, background: 'var(--c-header)', borderBottom: '1px solid var(--c-border)', boxShadow: '0 2px 8px var(--c-shadow)' }}>
-        <div className="max-w-3xl mx-auto flex h-full min-w-max">
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={clsx(
-                'flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap transition-colors relative',
-                activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
-              )}>
-              <span className="text-sm">{tab.emoji}</span>
-              <span>{tab.label}</span>
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #6366f1, #a855f7)' }} />
-              )}
-            </button>
+      {/* ── Tab bar ── mobile: 2×4 grid 80px · desktop: single row 40px */}
+      <nav className="fixed left-0 right-0 z-10 h-20 md:h-10"
+        style={{ top: 52, background: 'var(--c-header)', borderBottom: '1px solid var(--c-border)', boxShadow: '0 2px 8px var(--c-shadow)' }}>
+
+        {/* Mobile: two rows of 4 */}
+        <div className="md:hidden flex flex-col h-full">
+          {[TABS.slice(0, 4), TABS.slice(4)].map((row, ri) => (
+            <div key={ri} className="flex flex-1"
+              style={{ borderBottom: ri === 0 ? '1px solid var(--c-border)' : 'none' }}>
+              {row.map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={clsx(
+                    'flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors',
+                    activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400'
+                  )}>
+                  <span className="text-base leading-none">{tab.emoji}</span>
+                  <span className="text-[10px] font-semibold leading-none">{tab.label}</span>
+                  {activeTab === tab.id && (
+                    <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
+                      style={{ background: 'linear-gradient(90deg, #6366f1, #a855f7)' }} />
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
+        </div>
+
+        {/* Desktop: single scrollable row */}
+        <div className="hidden md:flex max-w-3xl mx-auto h-full overflow-x-auto">
+          <div className="flex h-full min-w-max">
+            {TABS.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={clsx(
+                  'flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap transition-colors relative',
+                  activeTab === tab.id ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
+                )}>
+                <span className="text-sm">{tab.emoji}</span>
+                <span>{tab.label}</span>
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
+                    style={{ background: 'linear-gradient(90deg, #6366f1, #a855f7)' }} />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
 
-      {/* ── Content — header 52px + tab 40px = 92px ── */}
-      <div className="max-w-3xl mx-auto px-4 pb-8" style={{ paddingTop: 100 }}>
+      {/* ── Content — mobile: 52+80+8=140px · desktop: 52+40+8=100px ── */}
+      <div className="max-w-3xl mx-auto px-4 pb-8 pt-[140px] md:pt-[100px]">
         {!isConfigured && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-700">
             ⚠️ Add Supabase keys to <code className="bg-amber-100 px-1 rounded">.env.local</code> then restart.
@@ -159,7 +184,6 @@ export default function App() {
         {activeTab === 'calories'  && <Calories todayLog={todayLog} logs={logs} onRefresh={refresh} />}
         {activeTab === 'finance'   && <Finance logs={logs} />}
         {activeTab === 'calendar'  && <Calendar logs={logs} />}
-        {activeTab === 'history'   && <History logs={logs} />}
       </div>
     </div>
     </DarkContext.Provider>
