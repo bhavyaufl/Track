@@ -5,8 +5,8 @@ import { useTooltipStyle, useDark } from '../../lib/DarkContext'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MONTHLY_SALARY = 75000
-const TOTAL_GOAL     = 500000   // ₹5L savings + investments (excl. vacation fund)
-const N_MONTHS       = 10       // Jul 2026 → Apr 2027
+const TOTAL_GOAL     = 600000   // ₹6L savings + investments · 15% CAGR target
+const N_MONTHS       = 12       // Jul 2026 → Jun 2027
 
 // ── Vacation fund ─────────────────────────────────────────────────────────────
 const VACATION_MONTHLY = 8000    // ₹8k/mo · evened over all 10 months (Jul → Apr)
@@ -17,7 +17,7 @@ const VACATIONS = [
   { name: 'Lakshadweep',  month: 'Dec', emoji: '🏝️', budget: 60000, desc: 'Dec trip · ₹20k lump + savings' },
 ]
 
-const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
+const PROJ_MONTHS = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
 
 const FIXED_SUBS = [
   { name: 'Claude AI', amount: 2000 },
@@ -152,9 +152,9 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
       <div className={`rounded-2xl p-4 border ${onTrack ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
         <div className="flex items-start justify-between mb-3">
           <div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Wealth Goal · Apr 2027</div>
-            <div className="text-3xl font-black text-gray-800">₹5,00,000</div>
-            <div className="text-xs text-gray-500 mt-0.5">dedicated savings account + investment portfolio · 10 salary credits of ₹75k</div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Wealth Goal · Jun 2027</div>
+            <div className="text-3xl font-black text-gray-800">₹6,00,000</div>
+            <div className="text-xs text-gray-500 mt-0.5">dedicated savings account + investment portfolio · 12 salary credits of ₹75k</div>
           </div>
           <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ml-2 ${onTrack ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'}`}>
             {onTrack ? '✓ On track' : '⚠ Close'}
@@ -175,7 +175,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
           </div>
           <div className="flex justify-between text-xs mt-1 text-gray-400">
             <span>₹0</span>
-            <span>₹5L</span>
+            <span>₹6L</span>
           </div>
         </div>
 
@@ -252,7 +252,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
             <div className="text-xs text-gray-400">bank balance + portfolio · 15% CAGR on investments</div>
           </div>
           <div className={`text-sm font-bold ${onTrack ? 'text-emerald-600' : 'text-orange-500'}`}>
-            ₹{(projTotal / 1000).toFixed(0)}k by Apr '27
+            ₹{(projTotal / 1000).toFixed(0)}k by Jun '27
           </div>
         </div>
         <ResponsiveContainer width="100%" height={170}>
@@ -274,7 +274,7 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
             <Tooltip contentStyle={tooltipStyle}
               formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name === 'bank' ? 'Bank balance' : 'Portfolio value']} />
             <ReferenceLine y={TOTAL_GOAL} stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: '₹5L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
+              label={{ value: '₹6L goal', position: 'insideTopRight', fontSize: 9, fill: '#f59e0b' }} />
             <Area type="monotone" dataKey="bank"        stackId="1" stroke="#6366f1" strokeWidth={1.5} fill="url(#bankGrad)" name="bank" />
             <Area type="monotone" dataKey="investments" stackId="1" stroke="#10b981" strokeWidth={1.5} fill="url(#invGrad)"  name="investments" />
           </AreaChart>
@@ -282,13 +282,13 @@ function WealthGoal({ logs, varMonthlyBudget, sip, portfolio, savingsBal, onUpda
         <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span>Bank balance</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span>Portfolio (SIP + returns)</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-4 h-0 border-t-2 border-dashed border-amber-400" /><span>₹5L goal</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 h-0 border-t-2 border-dashed border-amber-400" /><span>₹6L goal</span></div>
         </div>
       </div>
 
       {/* ── CAGR scenarios ── */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-        <h3 className="text-gray-700 font-semibold text-sm mb-1">Return Scenarios — Apr 2027</h3>
+        <h3 className="text-gray-700 font-semibold text-sm mb-1">Return Scenarios — Jun 2027</h3>
         <div className="text-xs text-gray-400 mb-3">how investment returns affect the final total</div>
         <div className="space-y-3.5">
           {scenarios.map(s => {
@@ -421,7 +421,7 @@ function MonthlyAllocation({ varMonthlyBudget, sip, logs, vacation }) {
           <span className="text-lg font-black text-gray-500">~₹29,000</span>
         </div>
         <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-          <span>Savings A/c: ₹{monthlyToBank.toLocaleString()}/mo × 10 → ₹{(monthlyToBank * N_MONTHS).toLocaleString()}</span>
+          <span>Savings A/c: ₹{monthlyToBank.toLocaleString()}/mo × 12 → ₹{(monthlyToBank * N_MONTHS).toLocaleString()}</span>
           <span>SIP: ₹{sip.toLocaleString()}/mo growing</span>
         </div>
       </div>
@@ -804,7 +804,7 @@ function buildCashFlow(logs, varMonthlyBudget, sip) {
 
   for (let y = 2026, mo = 6; ; mo++) {
     if (mo > 11) { y++; mo = 0 }
-    if (y > 2027 || (y === 2027 && mo > 3)) break
+    if (y > 2027 || (y === 2027 && mo > 5)) break
     const monthKey       = `${y}-${String(mo + 1).padStart(2, '0')}`
     const daysInMonth    = new Date(y, mo + 1, 0).getDate()
     const isCurrentMonth = y === today.getFullYear() && mo === today.getMonth()
@@ -978,7 +978,7 @@ function CashFlow({ logs, varMonthlyBudget, sip }) {
         </div>
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex justify-between">
           <span className="text-xs text-gray-400">+₹75k − subs − SIP − variable = closing bank balance</span>
-          <span className="text-xs font-bold text-gray-500">Apr '27: ₹{rows[rows.length - 1]?.closeBal.toLocaleString()}</span>
+          <span className="text-xs font-bold text-gray-500">Jun '27: ₹{rows[rows.length - 1]?.closeBal.toLocaleString()}</span>
         </div>
       </div>
     </div>
