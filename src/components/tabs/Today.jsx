@@ -117,7 +117,7 @@ function GoalList({ log }) {
     { label: 'Logged',           sub: '',                                   hit: !!log,                                          pts: 10 },
     { label: 'Protein ≥ 160g',  sub: `${macros.p}g`,                       hit: macros.p >= GOALS.protein,                      pts: 25 },
     { label: 'Calories 1500',   sub: `${cal}kcal`,                         hit: cal >= 1400 && cal <= 1600,                     pts: 20 },
-    { label: 'Steps ≥ 10k',     sub: steps.toLocaleString(),               hit: steps >= 10000,                                 pts: 20 },
+    { label: 'Steps ≥ 15k',     sub: steps.toLocaleString(),               hit: steps >= GOALS.steps,                           pts: 20 },
     { label: 'Gym or Cardio',   sub: log?.muscles?.slice(0, 2).join(', ') || '', hit: !!(log?.exercises?.length || log?.cardio_type), pts: 25 },
   ]
   const hitCount = goals.filter(g => g.hit).length

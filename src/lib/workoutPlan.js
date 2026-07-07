@@ -40,16 +40,16 @@ export const GROUP_COLOR = {
 
 // Cardio target per day
 // Sun: 5k run (part of pull_b session). Mon: rest — no cardio.
-// Tue–Thu + Sat: 10k steps OR 3k run in morning.
+// Tue–Thu + Sat: 15k steps OR 3k run in morning.
 // Fri (buffer): optional light walk.
 export const CARDIO_PLAN = {
   0: { label: '5K Run', desc: '5k run · aim sub-30 · part of today\'s session' },
   1: null,
-  2: { label: 'Morning cardio', desc: '10k steps walk OR 3k run' },
-  3: { label: 'Morning cardio', desc: '10k steps walk OR 3k run' },
-  4: { label: 'Morning cardio', desc: '10k steps walk OR 3k run' },
+  2: { label: 'Morning cardio', desc: '15k steps walk OR 3k run' },
+  3: { label: 'Morning cardio', desc: '15k steps walk OR 3k run' },
+  4: { label: 'Morning cardio', desc: '15k steps walk OR 3k run' },
   5: { label: 'Optional', desc: 'Light walk — or skip if fully resting' },
-  6: { label: 'Morning cardio', desc: '10k steps walk OR 3k run' },
+  6: { label: 'Morning cardio', desc: '15k steps walk OR 3k run' },
 }
 
 // ── Exercise groups ──────────────────────────────────────────────────────────

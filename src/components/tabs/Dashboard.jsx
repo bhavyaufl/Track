@@ -114,7 +114,7 @@ function TodaySnapshot({ todayLog }) {
     { label: 'Logged',   hit: !!todayLog },
     { label: 'Protein',  hit: macros.p >= GOALS.protein },
     { label: 'Calories', hit: cal >= 1400 && cal <= 1600 },
-    { label: 'Steps',    hit: steps >= 10000 },
+    { label: 'Steps',    hit: steps >= GOALS.steps },
     { label: 'Workout',  hit: !!(todayLog?.exercises?.length || todayLog?.cardio_type) },
   ]
   const goalsHit = goals.filter(g => g.hit).length
@@ -151,7 +151,7 @@ function TodaySnapshot({ todayLog }) {
             {[
               { label: 'Cal', val: cal ? `${cal}` : '—', ok: cal >= 1400 && cal <= 1600 },
               { label: 'Protein', val: macros.p ? `${macros.p}g` : '—', ok: macros.p >= GOALS.protein },
-              { label: 'Steps', val: steps ? `${(steps/1000).toFixed(1)}k` : '—', ok: steps >= 10000 },
+              { label: 'Steps', val: steps ? `${(steps/1000).toFixed(1)}k` : '—', ok: steps >= GOALS.steps },
             ].map(s => (
               <div key={s.label} className={`rounded-lg px-1.5 py-1 text-center ${s.ok ? 'bg-emerald-50' : 'bg-gray-50'}`}>
                 <div className={`text-xs font-bold ${s.ok ? 'text-emerald-600' : 'text-gray-600'}`}>{s.val}</div>
