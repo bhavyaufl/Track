@@ -44,11 +44,12 @@ function loadSalary()    { try { return Number(localStorage.getItem('monthlySala
 function loadPortfolio() { try { return JSON.parse(localStorage.getItem('portfolio'))      || DEFAULT_PORTFOLIO } catch { return DEFAULT_PORTFOLIO } }
 function loadVacBal()    { try { const v = localStorage.getItem('vacationBal_v2');  return v !== null ? Number(v) : 0 } catch { return 0 } }
 function loadSpendBal()  { try { const v = localStorage.getItem('spendingBal_v1'); return v !== null ? Number(v) : 19352 } catch { return 19352 } }
+function loadVacMonthly() { try { const v = localStorage.getItem('vacationMonthly_v1'); return v !== null ? Number(v) : VACATION_MONTHLY } catch { return VACATION_MONTHLY } }
 function loadNeeds()     { try { return JSON.parse(localStorage.getItem('budgetNeeds_v1')) || DEFAULT_NEEDS     } catch { return DEFAULT_NEEDS } }
 function loadWants()     { try { return JSON.parse(localStorage.getItem('budgetWants_v1')) || DEFAULT_WANTS     } catch { return DEFAULT_WANTS } }
 
 // ── Finance helpers ───────────────────────────────────────────────────────────
-function calcSip(salary) { return Math.max(0, salary - FIXED_MONTHLY - VACATION_MONTHLY - SPEND_CAP) }
+function calcSip(salary, vacMonthly = VACATION_MONTHLY) { return Math.max(0, salary - FIXED_MONTHLY - vacMonthly - SPEND_CAP) }
 
 function sipFV(monthly, rateAnnual, months) {
   if (!rateAnnual || !monthly) return monthly * months
@@ -86,9 +87,9 @@ function InlineEdit({ value, onSave, prefix = '₹', className = '', inputClass 
 // PORTFOLIO TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function GoalCard({ portfolio, salary }) {
+function GoalCard({ portfolio, salary, vacMonthly }) {
   const tooltipStyle = useTooltipStyle()
-  const sip          = calcSip(salary)
+  const sip          = calcSip(salary, vacMonthly)
   const totalCurrent = portfolio.reduce((s, p) => s + p.current, 0)
 
   const projPortfolio = Math.round(lumpFV(totalCurrent, 15, N_MONTHS) + sipFV(sip, 15, N_MONTHS))
@@ -215,9 +216,9 @@ function GoalCard({ portfolio, salary }) {
   )
 }
 
-function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary }) {
+function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary, vacMonthly }) {
   const tooltipStyle  = useTooltipStyle()
-  const sip           = calcSip(salary)
+  const sip           = calcSip(salary, vacMonthly)
   const [editCell, setEditCell] = useState(null)
   const [editingSip,  setEditingSip]  = useState(false)
   const [sipOverride, setSipOverride] = useState(null)
@@ -363,15 +364,15 @@ function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary }) {
 // SPENDING TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal }) {
+function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal, vacMonthly, onUpdateVacMonthly }) {
   const tooltipStyle = useTooltipStyle()
-  const sip = calcSip(salary)
+  const sip = calcSip(salary, vacMonthly)
 
   const allocData = [
-    { name: 'SIP',      value: sip,             color: '#6366f1' },
-    { name: 'Vacation', value: VACATION_MONTHLY, color: '#f472b6' },
-    { name: 'Variable', value: SPEND_CAP,        color: '#f59e0b' },
-    { name: 'Subs',     value: FIXED_MONTHLY,    color: '#06b6d4' },
+    { name: 'SIP',      value: sip,          color: '#6366f1' },
+    { name: 'Vacation', value: vacMonthly,   color: '#f472b6' },
+    { name: 'Variable', value: SPEND_CAP,    color: '#f59e0b' },
+    { name: 'Subs',     value: FIXED_MONTHLY,color: '#06b6d4' },
   ]
 
   return (
@@ -440,9 +441,14 @@ function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal 
           <div className="flex items-center justify-between py-0.5">
             <div className="flex items-center gap-2">
               <span className="text-gray-500">Vacation fund ✈️</span>
-              <span className="text-xs bg-pink-50 text-pink-600 font-semibold px-1.5 py-0.5 rounded">Jul–Apr</span>
+              {vacMonthly > VACATION_MONTHLY
+                ? <span className="text-xs bg-orange-50 text-orange-500 font-semibold px-1.5 py-0.5 rounded">Goa month 🏖️</span>
+                : <span className="text-xs bg-pink-50 text-pink-600 font-semibold px-1.5 py-0.5 rounded">Jul–Apr</span>}
             </div>
-            <span className="font-semibold text-pink-500">−₹{VACATION_MONTHLY.toLocaleString()}</span>
+            <InlineEdit value={vacMonthly}
+              onSave={v => { onUpdateVacMonthly(v); localStorage.setItem('vacationMonthly_v1', v) }}
+              className="font-semibold text-pink-500"
+              inputClass="w-20 text-sm font-semibold text-pink-700" />
           </div>
           <div className="flex items-center justify-between py-0.5 border-t border-gray-50 mt-1 pt-1.5">
             <span className="text-gray-600">Variable spend (cap)</span>
@@ -450,8 +456,8 @@ function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal 
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-gray-200">
             <span className="font-bold text-gray-700">Remainder</span>
-            <span className={`text-lg font-black ${salary - FIXED_MONTHLY - sip - VACATION_MONTHLY - SPEND_CAP === 0 ? 'text-emerald-600' : 'text-gray-700'}`}>
-              ₹{Math.max(0, salary - FIXED_MONTHLY - sip - VACATION_MONTHLY - SPEND_CAP).toLocaleString()}
+            <span className={`text-lg font-black ${salary - FIXED_MONTHLY - sip - vacMonthly - SPEND_CAP === 0 ? 'text-emerald-600' : 'text-gray-700'}`}>
+              ₹{Math.max(0, salary - FIXED_MONTHLY - sip - vacMonthly - SPEND_CAP).toLocaleString()}
             </span>
           </div>
         </div>
@@ -655,11 +661,12 @@ function VacationFund({ vacBal, onUpdateVacBal }) {
 // MAIN EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Finance({ logs }) {
-  const [tab,       setTab]       = useState('portfolio')
-  const [salary,    setSalary]    = useState(loadSalary)
-  const [portfolio, setPortfolio] = useState(loadPortfolio)
-  const [vacBal,    setVacBal]    = useState(loadVacBal)
-  const [spendBal,  setSpendBal]  = useState(loadSpendBal)
+  const [tab,        setTab]        = useState('portfolio')
+  const [salary,     setSalary]     = useState(loadSalary)
+  const [portfolio,  setPortfolio]  = useState(loadPortfolio)
+  const [vacBal,     setVacBal]     = useState(loadVacBal)
+  const [spendBal,   setSpendBal]   = useState(loadSpendBal)
+  const [vacMonthly, setVacMonthly] = useState(loadVacMonthly)
 
   function updatePortfolio(p) {
     setPortfolio(p)
@@ -682,14 +689,14 @@ export default function Finance({ logs }) {
 
       {tab === 'portfolio' && (
         <div className="space-y-3">
-          <GoalCard portfolio={portfolio} salary={salary} />
-          <InvestmentPortfolio portfolio={portfolio} onUpdatePortfolio={updatePortfolio} salary={salary} />
+          <GoalCard portfolio={portfolio} salary={salary} vacMonthly={vacMonthly} />
+          <InvestmentPortfolio portfolio={portfolio} onUpdatePortfolio={updatePortfolio} salary={salary} vacMonthly={vacMonthly} />
         </div>
       )}
 
       {tab === 'spending' && (
         <div className="space-y-3">
-          <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} />
+          <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} vacMonthly={vacMonthly} onUpdateVacMonthly={setVacMonthly} />
           <SpendingThisMonth logs={logs} />
           <BudgetSection title="Needs" emoji="🧾" color="#6366f1"
             items={DEFAULT_NEEDS} storageKey="budgetNeeds_v1" defaults={DEFAULT_NEEDS} />
