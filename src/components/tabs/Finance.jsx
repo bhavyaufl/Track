@@ -42,7 +42,7 @@ const DEFAULT_WANTS = [
 // ── localStorage helpers ──────────────────────────────────────────────────────
 function loadSalary()    { try { return Number(localStorage.getItem('monthlySalary_v1'))  || DEFAULT_SALARY    } catch { return DEFAULT_SALARY } }
 function loadPortfolio() { try { return JSON.parse(localStorage.getItem('portfolio'))      || DEFAULT_PORTFOLIO } catch { return DEFAULT_PORTFOLIO } }
-function loadVacBal()    { try { const v = localStorage.getItem('vacationBal_v2');  return v !== null ? Number(v) : 20000 } catch { return 20000 } }
+function loadVacBal()    { try { const v = localStorage.getItem('vacationBal_v2');  return v !== null ? Number(v) : 0 } catch { return 0 } }
 function loadSpendBal()  { try { const v = localStorage.getItem('spendingBal_v1'); return v !== null ? Number(v) : 19352 } catch { return 19352 } }
 function loadNeeds()     { try { return JSON.parse(localStorage.getItem('budgetNeeds_v1')) || DEFAULT_NEEDS     } catch { return DEFAULT_NEEDS } }
 function loadWants()     { try { return JSON.parse(localStorage.getItem('budgetWants_v1')) || DEFAULT_WANTS     } catch { return DEFAULT_WANTS } }
