@@ -1,6 +1,18 @@
 import { useState } from 'react'
 import { yesterdayIST } from '../../lib/dateIST'
 import { GOALS, EXERCISE_GOALS } from '../../lib/constants'
+
+function getDayTarget(dateStr) {
+  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date()
+  return d.getDay() === 0 || d.getDay() === 6 ? GOALS.weekendCalories : GOALS.weekdayCalories
+}
+
+function getCardioForDate(date) {
+  try {
+    const sessions = JSON.parse(localStorage.getItem('cardio_v1') || '[]')
+    return sessions.find(s => s.date === date) || null
+  } catch { return null }
+}
 import { supabase } from '../../lib/supabase'
 import { WEEKLY_PLAN } from '../../lib/mealPlan'
 import { DAY_WORKOUT, GROUP_LABEL, GROUP_EMOJI, GROUP_COLOR, WORKOUT_GROUPS, CARDIO_PLAN } from '../../lib/workoutPlan'
@@ -859,18 +871,55 @@ function DayView({ log, onRefresh, dayIdx, levels }) {
   const steps  = log?.steps   || 0
   const spent  = (log?.spending || []).reduce((s, e) => s + e.amount, 0)
 
+  const calTarget = getDayTarget(log?.date)
+  const cardio    = log?.date ? getCardioForDate(log.date) : null
+  const burned    = cardio?.caloriesBurned || 0
+  const netCal    = cal - burned
+  const inDeficit = netCal < calTarget
+  const calDiff   = Math.abs(netCal - calTarget)
+
   return (
     <div className="space-y-2">
       <ScoreStrip log={log} onEdit={() => setEditing(true)} />
 
       <div className="grid grid-cols-3 gap-2">
-        <RemainCard label="Calories" remaining={GOALS.calories.target - cal} consumed={cal}   total={GOALS.calories.target}
+        <RemainCard label="Calories" remaining={calTarget - cal} consumed={cal}   total={calTarget}
           unit="kcal" icon="🔥" color="#6366f1" bgClass="bg-indigo-50" />
         <RemainCard label="Protein"  remaining={GOALS.protein - macros.p}   consumed={macros.p} total={GOALS.protein}
           unit="g"    icon="💪" color="#8b5cf6" bgClass="bg-purple-50" />
         <RemainCard label="Budget"   remaining={GOALS.dailyBudget - spent}  consumed={spent}  total={GOALS.dailyBudget}
           unit="₹"   icon="💰" color="#f59e0b" bgClass="bg-amber-50" />
       </div>
+
+      {/* Calories burned + deficit/surplus */}
+      {(burned > 0 || cal > 0) && (
+        <div className={`rounded-xl border shadow-sm px-3 py-2.5 flex items-center gap-3 ${
+          inDeficit ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'
+        }`}>
+          <span className="text-lg shrink-0">🔥</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-gray-600 font-medium">{cal} eaten</span>
+              {burned > 0 && <>
+                <span className="text-gray-300 text-xs">−</span>
+                <span className="text-xs text-gray-600">{burned} burned</span>
+                <span className="text-gray-300 text-xs">=</span>
+                <span className="text-xs font-bold text-gray-700">{netCal} net</span>
+              </>}
+            </div>
+            <div className="h-1.5 bg-white/70 rounded-full mt-1.5 overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${Math.min((netCal / calTarget) * 100, 100)}%`, background: inDeficit ? '#6366f1' : '#ef4444' }} />
+            </div>
+            <div className="text-xs text-gray-400 mt-0.5">target {calTarget.toLocaleString()} kcal</div>
+          </div>
+          <div className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${
+            inDeficit ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+          }`}>
+            {inDeficit ? `Deficit ${calDiff.toLocaleString()}` : `Surplus +${calDiff.toLocaleString()}`}
+          </div>
+        </div>
+      )}
 
       <StepsBar steps={steps} />
       <SleepTracker log={log} />

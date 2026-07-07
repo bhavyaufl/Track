@@ -4,8 +4,11 @@ export const GOALS = {
   carbs: 100,
   fat: 50,
   steps: 10000,
-  weightTarget: 77,      // 67.5 kg lean mass ÷ 0.88 = 76.7 kg at 12% BF
-  bodyFatTarget: 12,
+  weightTarget: 80,
+  bodyFatTarget: 14,
+  weekdayCalories: 1500,
+  weekendCalories: 3500,
+  weeklyCalories: 16000,
   startWeight: 90,
   startBodyFat: 25,
   dailyBudget: 500,

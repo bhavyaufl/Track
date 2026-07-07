@@ -49,8 +49,10 @@ function SevenDayChart({ logs }) {
         <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} />
         <YAxis stroke="#cbd5e1" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 5000]} width={36} />
         <Tooltip contentStyle={tooltipStyle} />
-        <ReferenceLine y={GOALS.calories.target} stroke="#a5b4fc" strokeDasharray="4 2"
-          label={{ value: `${GOALS.calories.target}`, fill: '#818cf8', fontSize: 9, position: 'right' }} />
+        <ReferenceLine y={GOALS.weekdayCalories} stroke="#a5b4fc" strokeDasharray="4 2"
+          label={{ value: '1500', fill: '#818cf8', fontSize: 9, position: 'right' }} />
+        <ReferenceLine y={GOALS.weekendCalories} stroke="#fca5a5" strokeDasharray="4 2"
+          label={{ value: '3500', fill: '#f87171', fontSize: 9, position: 'right' }} />
         <Bar dataKey="calories" fill="#6366f1" radius={[4,4,0,0]} name="kcal" />
       </BarChart>
     </ResponsiveContainer>
@@ -214,23 +216,107 @@ function MealRow({ meal, index, onEdit }) {
   )
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getDayTarget(dateStr) {
+  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date()
+  return d.getDay() === 0 || d.getDay() === 6 ? GOALS.weekendCalories : GOALS.weekdayCalories
+}
+
+// ─── Weekly Tracker ───────────────────────────────────────────────────────────
+
+function WeeklyCalories({ logs }) {
+  const today = new Date()
+  const dow = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1))
+
+  const days = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    const dateStr = d.toISOString().split('T')[0]
+    const target  = getDayTarget(dateStr)
+    const log     = logs.find(l => l.date === dateStr)
+    const cal     = log?.calories || 0
+    const isFuture = d > today
+    days.push({ dateStr, date: d, target, cal, isFuture })
+  }
+
+  const totalEaten  = days.reduce((s, d) => s + d.cal, 0)
+  const weekTarget  = GOALS.weeklyCalories
+  const weekPct     = Math.min((totalEaten / weekTarget) * 100, 100)
+  const inDeficit   = totalEaten < weekTarget
+  const dayLabels   = ['M','T','W','T','F','S','S']
+
+  return (
+    <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-gray-700 font-semibold text-sm">This Week</h3>
+        <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+          inDeficit ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+        }`}>
+          {inDeficit ? 'Deficit' : 'Surplus'}
+        </div>
+      </div>
+
+      {/* Day bars */}
+      <div className="flex gap-1 mb-3 h-16 items-end">
+        {days.map((d, i) => {
+          const isToday   = d.dateStr === today.toISOString().split('T')[0]
+          const pct       = d.isFuture ? 0 : Math.min((d.cal / d.target) * 100, 100)
+          const overTarget = d.cal > d.target
+          const barColor  = d.isFuture ? '#f1f5f9' : overTarget ? '#ef4444' : d.cal > 0 ? '#10b981' : '#e0e7ff'
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+              <div className="text-xs text-gray-400">{d.cal > 0 && !d.isFuture ? (d.cal/1000).toFixed(1)+'k' : ''}</div>
+              <div className="w-full bg-gray-100 rounded-t flex-1 relative overflow-hidden" style={{ minHeight: 32 }}>
+                <div className="absolute bottom-0 left-0 right-0 rounded-t transition-all duration-500"
+                  style={{ height: `${pct}%`, background: barColor, minHeight: d.cal > 0 ? 3 : 0 }} />
+              </div>
+              <div className={`text-xs font-bold ${isToday ? 'text-indigo-600' : 'text-gray-400'}`}>{dayLabels[i]}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Weekly total */}
+      <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-1">
+        <div className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${weekPct}%`, background: inDeficit ? '#6366f1' : '#ef4444' }} />
+      </div>
+      <div className="flex justify-between text-xs text-gray-400">
+        <span>{totalEaten.toLocaleString()} kcal eaten</span>
+        <span>goal {weekTarget.toLocaleString()}/week</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Calories({ todayLog, logs, onRefresh }) {
   const [editingIndex, setEditingIndex] = useState(null)
 
+  const todayDate = todayLog?.date || new Date().toISOString().split('T')[0]
+  const todayTarget = getDayTarget(todayDate)
+  const isWeekend   = todayTarget === GOALS.weekendCalories
+
   const cal    = todayLog?.calories || 0
   const macros = todayLog?.macros   || { p: 0, c: 0, f: 0 }
-  const rem    = Math.max(GOALS.calories.target - cal, 0)
-  const over   = cal > GOALS.calories.target
-  const onTgt  = cal >= GOALS.calories.target
-  const pct    = Math.min((cal / GOALS.calories.target) * 100, 100)
+  const rem    = Math.max(todayTarget - cal, 0)
+  const over   = cal > todayTarget
+  const pct    = Math.min((cal / todayTarget) * 100, 100)
+  const inDeficit = cal < todayTarget
+  const diff    = Math.abs(cal - todayTarget)
 
   const loggedDays   = logs.filter(l => l.calories > 0).length
   const totalCals    = logs.reduce((s, l) => s + (l.calories || 0), 0)
   const avgCals      = loggedDays > 0 ? Math.round(totalCals / loggedDays) : 0
-  const totalSurplus = logs.reduce((s, l) => l.calories ? s + (l.calories - GOALS.calories.target) : s, 0)
-  const daysOnTarget = logs.filter(l => l.calories >= GOALS.calories.target).length
+  const daysInDeficit = logs.filter(l => {
+    if (!l.calories) return false
+    return l.calories < getDayTarget(l.date)
+  }).length
 
   // Meals — new format with fallback to legacy columns
   const newMeals = todayLog?.meals || []
@@ -245,36 +331,41 @@ export default function Calories({ todayLog, logs, onRefresh }) {
     <div className="space-y-3 fade-up">
 
       {/* Hero — compact */}
-      <div className={`rounded-2xl px-4 py-3 border shadow-sm ${onTgt ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-gray-100'}`}>
+      <div className={`rounded-2xl px-4 py-3 border shadow-sm ${inDeficit && cal > 0 ? 'bg-emerald-50 border-emerald-100' : over ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
         <div className="flex items-center justify-between mb-2">
           <div>
-            <div className="text-gray-400 text-xs font-medium uppercase tracking-wide">Today</div>
-            <div className={`text-2xl font-black leading-none mt-0.5 ${onTgt ? 'text-emerald-600' : 'text-gray-800'}`}>
+            <div className="flex items-center gap-1.5">
+              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide">Today</div>
+              <div className="text-gray-400 text-xs bg-gray-100 px-1.5 py-0.5 rounded font-medium">
+                {isWeekend ? 'Weekend' : 'Weekday'}
+              </div>
+            </div>
+            <div className={`text-2xl font-black leading-none mt-0.5 ${over ? 'text-red-500' : 'text-gray-800'}`}>
               {cal.toLocaleString()}<span className="text-sm font-medium text-gray-400 ml-1">kcal</span>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right flex flex-col items-end gap-1">
+            {cal > 0 && (
+              <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                inDeficit ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'
+              }`}>
+                {inDeficit ? `Deficit ${diff.toLocaleString()}` : `Surplus +${diff.toLocaleString()}`}
+              </div>
+            )}
             {over ? (
-              <div className="bg-amber-50 text-amber-500 text-xs font-bold px-2 py-1 rounded-full">
-                +{(cal - GOALS.calories.target).toLocaleString()} over
-              </div>
+              <div className="text-xs text-red-400">+{(cal - todayTarget).toLocaleString()} over target</div>
             ) : (
-              <div>
-                <div className={`text-lg font-black leading-none ${rem === 0 ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                  {rem.toLocaleString()}
-                </div>
-                <div className="text-gray-400 text-xs">kcal left</div>
-              </div>
+              <div className="text-xs text-gray-400">{rem.toLocaleString()} kcal left</div>
             )}
           </div>
         </div>
         <div className="h-2 bg-white/70 rounded-full overflow-hidden mb-1">
           <div className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: onTgt ? '#10b981' : '#6366f1' }} />
+            style={{ width: `${pct}%`, background: over ? '#ef4444' : '#6366f1' }} />
         </div>
         <div className="flex justify-between text-xs text-gray-400">
           <span>{cal.toLocaleString()} eaten</span>
-          <span className="text-indigo-400">target: {GOALS.calories.target.toLocaleString()}</span>
+          <span className="text-indigo-400">target: {todayTarget.toLocaleString()}</span>
         </div>
       </div>
 
@@ -308,6 +399,9 @@ export default function Calories({ todayLog, logs, onRefresh }) {
         )}
       </div>
 
+      {/* Weekly tracker */}
+      <WeeklyCalories logs={logs} />
+
       {/* 7-day chart */}
       <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
         <h3 className="text-gray-700 font-semibold text-sm mb-2">7-Day Trend</h3>
@@ -316,25 +410,23 @@ export default function Calories({ todayLog, logs, onRefresh }) {
 
       {/* Calorie summary */}
       <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
-        <h3 className="text-gray-700 font-semibold text-sm mb-2">Calorie Summary</h3>
+        <h3 className="text-gray-700 font-semibold text-sm mb-2">Summary</h3>
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-indigo-50 rounded-xl p-2.5 text-center">
-            <div className={`text-lg font-bold ${totalSurplus >= 0 ? 'text-indigo-600' : 'text-red-400'}`}>
-              {totalSurplus >= 0 ? '+' : ''}{totalSurplus.toLocaleString()}
-            </div>
-            <div className="text-gray-400 text-xs mt-0.5">kcal {totalSurplus >= 0 ? 'surplus' : 'deficit'}</div>
+          <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
+            <div className="text-lg font-bold text-emerald-600">{daysInDeficit}</div>
+            <div className="text-gray-400 text-xs mt-0.5">days in deficit</div>
           </div>
           <div className="bg-gray-50 rounded-xl p-2.5 text-center">
             <div className="text-lg font-bold text-gray-700">{avgCals.toLocaleString()}</div>
             <div className="text-gray-400 text-xs mt-0.5">avg kcal / day</div>
           </div>
-          <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
-            <div className="text-lg font-bold text-emerald-600">{daysOnTarget}</div>
-            <div className="text-gray-400 text-xs mt-0.5">days on target</div>
+          <div className="bg-indigo-50 rounded-xl p-2.5 text-center">
+            <div className="text-lg font-bold text-indigo-600">{GOALS.weekdayCalories.toLocaleString()}</div>
+            <div className="text-gray-400 text-xs mt-0.5">weekday target</div>
           </div>
-          <div className="bg-amber-50 rounded-xl p-2.5 text-center">
-            <div className="text-lg font-bold text-amber-600">{loggedDays}</div>
-            <div className="text-gray-400 text-xs mt-0.5">days logged</div>
+          <div className="bg-pink-50 rounded-xl p-2.5 text-center">
+            <div className="text-lg font-bold text-pink-500">{GOALS.weekendCalories.toLocaleString()}</div>
+            <div className="text-gray-400 text-xs mt-0.5">weekend target</div>
           </div>
         </div>
       </div>

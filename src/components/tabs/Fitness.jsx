@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+import { todayIST } from '../../lib/dateIST'
 
 async function resizeToBase64(file, maxPx) {
   return new Promise(resolve => {
@@ -581,13 +582,195 @@ function FitnessExRow({ name, level, goal, logged, color }) {
   )
 }
 
+// ─── Cardio Section ───────────────────────────────────────────────────────────
+const STEPS_PER_KM = 1250
+
+function loadCardioSessions() {
+  try { return JSON.parse(localStorage.getItem('cardio_v1') || '[]') } catch { return [] }
+}
+function saveCardioSessions(arr) {
+  localStorage.setItem('cardio_v1', JSON.stringify(arr))
+}
+
+function CardioSection() {
+  const today = todayIST()
+  const fileRef = useRef(null)
+  const [sessions, setSessions] = useState(() => loadCardioSessions())
+  const [form, setForm] = useState({ type: 'Treadmill', duration: '', distance: '', caloriesBurned: '' })
+  const [photo, setPhoto] = useState(null)
+  const [saved, setSaved] = useState(false)
+
+  const todaySession = sessions.find(s => s.date === today)
+  const stepsPreview = form.distance ? Math.round(Number(form.distance) * STEPS_PER_KM) : null
+
+  function handlePhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setPhoto(ev.target.result)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  function logSession() {
+    const dist = Number(form.distance) || 0
+    const session = {
+      date: today,
+      type: form.type,
+      duration: Number(form.duration) || 0,
+      distance: dist,
+      caloriesBurned: Number(form.caloriesBurned) || 0,
+      steps: dist ? Math.round(dist * STEPS_PER_KM) : 0,
+      photo: photo || null,
+      savedAt: new Date().toISOString(),
+    }
+    const updated = [...sessions.filter(s => s.date !== today), session]
+    saveCardioSessions(updated)
+    setSessions(updated)
+    setForm({ type: 'Treadmill', duration: '', distance: '', caloriesBurned: '' })
+    setPhoto(null)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const recentSessions = [...sessions].reverse().slice(0, 7)
+  const hasData = form.duration || form.distance || form.caloriesBurned
+
+  return (
+    <div className="space-y-3">
+      {/* Today summary (if logged) */}
+      {todaySession && (
+        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-base">🏃</span>
+            <span className="text-sm font-bold text-emerald-700">Today's Cardio</span>
+            <span className="ml-auto text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-medium">{todaySession.type}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              ['⏱', `${todaySession.duration}m`, 'Duration'],
+              ['📏', `${todaySession.distance}km`, 'Distance'],
+              ['🔥', `${todaySession.caloriesBurned}`, 'Burned'],
+              ['👣', todaySession.steps.toLocaleString(), 'Steps'],
+            ].map(([icon, val, label]) => (
+              <div key={label} className="bg-white rounded-xl px-2 py-2 text-center border border-emerald-100">
+                <div className="text-base leading-none mb-1">{icon}</div>
+                <div className="text-sm font-bold text-gray-800 leading-none">{val}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
+          {todaySession.photo && (
+            <img src={todaySession.photo} alt="treadmill" className="w-full h-24 object-contain rounded-xl mt-3 bg-white border border-emerald-100" />
+          )}
+        </div>
+      )}
+
+      {/* Log form */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <h3 className="text-gray-700 font-semibold text-sm mb-3">{todaySession ? 'Update Today' : 'Log Cardio'}</h3>
+
+        {/* Activity type */}
+        <div className="flex gap-1.5 mb-3">
+          {['Treadmill', 'Run', 'Cycle', 'Other'].map(t => (
+            <button key={t} onClick={() => setForm(f => ({ ...f, type: t }))}
+              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition-all ${
+                form.type === t ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}>{t}</button>
+          ))}
+        </div>
+
+        {/* Photo upload */}
+        <div className="mb-3">
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
+          {photo ? (
+            <div className="relative">
+              <img src={photo} alt="Treadmill display" className="w-full h-40 object-contain rounded-xl bg-gray-50 border border-gray-100" />
+              <button onClick={() => setPhoto(null)}
+                className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full hover:bg-black/70">✕</button>
+            </div>
+          ) : (
+            <button onClick={() => fileRef.current?.click()}
+              className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3.5 text-xs text-gray-400 hover:border-indigo-300 hover:text-indigo-400 transition-colors flex items-center justify-center gap-2">
+              <span>📷</span>
+              <span>Add treadmill photo (optional)</span>
+            </button>
+          )}
+        </div>
+
+        {/* Input fields */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Duration (min)</label>
+            <input type="number" min="0" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
+              placeholder="0"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-center font-semibold text-gray-700 focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Distance (km)</label>
+            <input type="number" min="0" step="0.1" value={form.distance} onChange={e => setForm(f => ({ ...f, distance: e.target.value }))}
+              placeholder="0.0"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-center font-semibold text-gray-700 focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-400 mb-1 block">Calories Burned (kcal)</label>
+            <input type="number" min="0" value={form.caloriesBurned} onChange={e => setForm(f => ({ ...f, caloriesBurned: e.target.value }))}
+              placeholder="0"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-center font-semibold text-gray-700 focus:outline-none focus:border-indigo-400" />
+          </div>
+        </div>
+
+        {stepsPreview && (
+          <div className="text-xs text-indigo-500 text-center mb-3 bg-indigo-50 rounded-lg py-1.5">
+            👣 ~{stepsPreview.toLocaleString()} steps from {form.distance} km
+          </div>
+        )}
+
+        <button onClick={logSession} disabled={!hasData}
+          className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:bg-indigo-700 active:scale-95 transition-all">
+          {saved ? '✓ Saved!' : todaySession ? 'Update Session' : 'Save Session'}
+        </button>
+      </div>
+
+      {/* Recent history */}
+      {recentSessions.length > 0 && (
+        <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
+          <h3 className="text-gray-700 font-semibold text-sm mb-2">Recent Sessions</h3>
+          <div className="space-y-1">
+            {recentSessions.map((s, i) => (
+              <div key={i} className={`flex items-center gap-2 py-2 ${i < recentSessions.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                <span className="text-xs text-gray-400 shrink-0 w-10">{s.date.slice(5)}</span>
+                <span className="text-xs font-medium text-gray-600 shrink-0 w-16">{s.type}</span>
+                <div className="flex gap-2 ml-auto text-xs text-gray-500 flex-wrap justify-end">
+                  {s.duration > 0 && <span>⏱{s.duration}m</span>}
+                  {s.distance > 0 && <span>📏{s.distance}km</span>}
+                  {s.caloriesBurned > 0 && <span>🔥{s.caloriesBurned}</span>}
+                  {s.steps > 0 && <span>👣{(s.steps).toLocaleString()}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {recentSessions.length === 0 && !todaySession && (
+        <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-100">
+          <div className="text-4xl mb-2">🏃</div>
+          <div className="text-gray-500 text-sm font-medium">No cardio logged yet</div>
+          <div className="text-gray-400 text-xs mt-1">Log your first session above</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Fitness({ logs, levels }) {
   const [tab, setTab] = useState('plan')
 
   return (
     <div className="space-y-4 fade-up">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[['plan','📅'],['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['history','📋']].map(([id, label]) => (
+        {[['plan','📅'],['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['cardio','🏃']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex-1 py-1.5 text-sm rounded-lg transition-all ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm font-medium' : 'text-gray-400 hover:text-gray-600'
@@ -611,7 +794,7 @@ export default function Fitness({ logs, levels }) {
           <div className="flex justify-between mb-4">
             <div>
               <div className="text-gray-700 font-semibold">Weight Trend</div>
-              <div className="text-gray-400 text-xs mt-0.5">Start: 91 kg → Target: 85 kg</div>
+              <div className="text-gray-400 text-xs mt-0.5">Start: 91 kg → Target: 80 kg @ 14% BF</div>
             </div>
             {logs.find(l => l.weight) && (
               <div className="text-right">
@@ -628,13 +811,7 @@ export default function Fitness({ logs, levels }) {
 
       {tab === 'screen' && <ScreenTime logs={logs} />}
 
-      {tab === 'history' && (
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <h3 className="text-gray-700 font-semibold mb-1">Workout History</h3>
-          <div className="text-xs text-gray-400 mb-3">Last 14 sessions</div>
-          <WorkoutHistory logs={logs} />
-        </div>
-      )}
+      {tab === 'cardio' && <CardioSection />}
     </div>
   )
 }
