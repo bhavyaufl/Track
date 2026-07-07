@@ -5,7 +5,7 @@ import { useTooltipStyle, useDark } from '../../lib/DarkContext'
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TOTAL_GOAL       = 400000
 const N_MONTHS         = 12        // Jul 2026 → Jun 2027
-const SPEND_CAP        = 24000     // variable spend cap
+const SPEND_CAP        = 25000     // variable spend cap
 const VACATION_MONTHLY = 8000
 const VACATION_TOTAL   = 80000
 const PROJ_MONTHS      = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun']
@@ -27,9 +27,9 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
 ]
 const DEFAULT_NEEDS = [
-  { label: 'Groceries',     amount: 6500, note: 'Home + office canteen' },
+  { label: 'Groceries',     amount: 7000, note: 'Home + office canteen' },
   { label: 'Fuel',          amount: 2000, note: 'Bike · commute + errands' },
-  { label: 'Travel',        amount: 1000, note: 'Cab / auto / metro' },
+  { label: 'Travel',        amount: 1500, note: 'Cab / auto / metro' },
   { label: 'Personal care', amount: 1500, note: 'Haircut, toiletries' },
   { label: 'Bills',         amount: 1000, note: 'Electricity, internet' },
 ]
@@ -45,7 +45,7 @@ function loadPortfolio() { try { return JSON.parse(localStorage.getItem('portfol
 function loadVacBal()    { try { const v = localStorage.getItem('vacationBal_v2');  return v !== null ? Number(v) : 0 } catch { return 0 } }
 function loadSpendBal()  { try { const v = localStorage.getItem('spendingBal_v1'); return v !== null ? Number(v) : 19352 } catch { return 19352 } }
 function loadVacMonthly() { try { const v = localStorage.getItem('vacationMonthly_v1'); return v !== null ? Number(v) : VACATION_MONTHLY } catch { return VACATION_MONTHLY } }
-function loadNeeds()     { try { return JSON.parse(localStorage.getItem('budgetNeeds_v1')) || DEFAULT_NEEDS     } catch { return DEFAULT_NEEDS } }
+function loadNeeds()     { try { return JSON.parse(localStorage.getItem('budgetNeeds_v2')) || DEFAULT_NEEDS     } catch { return DEFAULT_NEEDS } }
 function loadWants()     { try { return JSON.parse(localStorage.getItem('budgetWants_v1')) || DEFAULT_WANTS     } catch { return DEFAULT_WANTS } }
 
 // ── Finance helpers ───────────────────────────────────────────────────────────
@@ -364,14 +364,15 @@ function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary, vacMonthly 
 // SPENDING TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal, vacMonthly, onUpdateVacMonthly }) {
+function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal, vacMonthly, onUpdateVacMonthly, spendTotal }) {
   const tooltipStyle = useTooltipStyle()
   const sip = calcSip(salary, vacMonthly)
+  const varDisplay = spendTotal ?? SPEND_CAP
 
   const allocData = [
     { name: 'SIP',      value: sip,          color: '#6366f1' },
     { name: 'Vacation', value: vacMonthly,   color: '#f472b6' },
-    { name: 'Variable', value: SPEND_CAP,    color: '#f59e0b' },
+    { name: 'Variable', value: varDisplay,   color: '#f59e0b' },
     { name: 'Subs',     value: FIXED_MONTHLY,color: '#06b6d4' },
   ]
 
@@ -451,13 +452,16 @@ function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal,
               inputClass="w-20 text-sm font-semibold text-pink-700" />
           </div>
           <div className="flex items-center justify-between py-0.5 border-t border-gray-50 mt-1 pt-1.5">
-            <span className="text-gray-600">Variable spend (cap)</span>
-            <span className="text-gray-400">−₹{SPEND_CAP.toLocaleString()}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600">Variable spend</span>
+              <span className="text-xs text-gray-400">(Needs + Wants)</span>
+            </div>
+            <span className="text-gray-400">−₹{varDisplay.toLocaleString()}</span>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-gray-200">
             <span className="font-bold text-gray-700">Remainder</span>
-            <span className={`text-lg font-black ${salary - FIXED_MONTHLY - sip - vacMonthly - SPEND_CAP === 0 ? 'text-emerald-600' : 'text-gray-700'}`}>
-              ₹{Math.max(0, salary - FIXED_MONTHLY - sip - vacMonthly - SPEND_CAP).toLocaleString()}
+            <span className={`text-lg font-black ${salary - FIXED_MONTHLY - sip - vacMonthly - varDisplay === 0 ? 'text-emerald-600' : 'text-gray-700'}`}>
+              ₹{Math.max(0, salary - FIXED_MONTHLY - sip - vacMonthly - varDisplay).toLocaleString()}
             </span>
           </div>
         </div>
@@ -466,9 +470,10 @@ function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal,
   )
 }
 
-function BudgetSection({ title, emoji, color, items, storageKey, defaults }) {
+function BudgetSection({ title, emoji, color, storageKey, defaults, onTotalChange }) {
   const [cats, setCats] = useState(() => { try { return JSON.parse(localStorage.getItem(storageKey)) || defaults } catch { return defaults } })
-  const [editing, setEditing] = useState(null)
+  const [editIdx, setEditIdx] = useState(null)
+  const [editVal, setEditVal] = useState('')
 
   const total = cats.reduce((s, c) => s + c.amount, 0)
 
@@ -477,7 +482,8 @@ function BudgetSection({ title, emoji, color, items, storageKey, defaults }) {
     const updated = cats.map((c, j) => j !== i ? c : { ...c, amount })
     setCats(updated)
     localStorage.setItem(storageKey, JSON.stringify(updated))
-    setEditing(null)
+    onTotalChange?.(updated.reduce((s, c) => s + c.amount, 0))
+    setEditIdx(null)
   }
 
   return (
@@ -500,7 +506,7 @@ function BudgetSection({ title, emoji, color, items, storageKey, defaults }) {
 
       <div className="space-y-2">
         {cats.map((c, i) => {
-          const isEd = editing === i
+          const isEd = editIdx === i
           const pct  = total > 0 ? Math.round(c.amount / total * 100) : 0
           return (
             <div key={c.label} className="flex items-center gap-2">
@@ -515,14 +521,14 @@ function BudgetSection({ title, emoji, color, items, storageKey, defaults }) {
               {isEd ? (
                 <div className="flex items-center gap-0.5 shrink-0">
                   <span className="text-xs text-gray-400">₹</span>
-                  <input type="number" autoFocus value={editing.val ?? c.amount}
+                  <input type="number" autoFocus value={editVal}
                     className="w-20 text-right text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-300 rounded-lg px-1.5 py-0.5 focus:outline-none"
-                    onChange={e => setEditing({ idx: i, val: e.target.value })}
-                    onBlur={() => commit(i, editing.val ?? c.amount)}
-                    onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditing(null) }} />
+                    onChange={e => setEditVal(e.target.value)}
+                    onBlur={() => commit(i, editVal)}
+                    onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditIdx(null) }} />
                 </div>
               ) : (
-                <button onClick={() => setEditing({ idx: i, val: c.amount })}
+                <button onClick={() => { setEditIdx(i); setEditVal(String(c.amount)) }}
                   className="text-xs font-bold text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 shrink-0 px-2 py-0.5 rounded-lg transition-colors border border-transparent hover:border-indigo-100">
                   ₹{c.amount.toLocaleString()}
                 </button>
@@ -667,6 +673,10 @@ export default function Finance({ logs }) {
   const [vacBal,     setVacBal]     = useState(loadVacBal)
   const [spendBal,   setSpendBal]   = useState(loadSpendBal)
   const [vacMonthly, setVacMonthly] = useState(loadVacMonthly)
+  const [needsTotal, setNeedsTotal] = useState(() => (loadNeeds()).reduce((s, c) => s + c.amount, 0))
+  const [wantsTotal, setWantsTotal] = useState(() => (loadWants()).reduce((s, c) => s + c.amount, 0))
+
+  const spendTotal = needsTotal + wantsTotal
 
   function updatePortfolio(p) {
     setPortfolio(p)
@@ -696,12 +706,12 @@ export default function Finance({ logs }) {
 
       {tab === 'spending' && (
         <div className="space-y-3">
-          <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} vacMonthly={vacMonthly} onUpdateVacMonthly={setVacMonthly} />
+          <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} vacMonthly={vacMonthly} onUpdateVacMonthly={setVacMonthly} spendTotal={spendTotal} />
           <SpendingThisMonth logs={logs} />
           <BudgetSection title="Needs" emoji="🧾" color="#6366f1"
-            items={DEFAULT_NEEDS} storageKey="budgetNeeds_v1" defaults={DEFAULT_NEEDS} />
+            storageKey="budgetNeeds_v2" defaults={DEFAULT_NEEDS} onTotalChange={setNeedsTotal} />
           <BudgetSection title="Wants" emoji="🎉" color="#ec4899"
-            items={DEFAULT_WANTS} storageKey="budgetWants_v1" defaults={DEFAULT_WANTS} />
+            storageKey="budgetWants_v1" defaults={DEFAULT_WANTS} onTotalChange={setWantsTotal} />
           <VacationFund vacBal={vacBal} onUpdateVacBal={setVacBal} />
         </div>
       )}
