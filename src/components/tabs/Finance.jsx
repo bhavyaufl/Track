@@ -548,11 +548,18 @@ function BudgetSection({ title, emoji, color, storageKey, defaults, onTotalChang
   )
 }
 
+const CAT_COLORS = {
+  Food: '#6366f1', Transport: '#f59e0b', Shopping: '#ec4899',
+  Entertainment: '#8b5cf6', Health: '#10b981', Rent: '#06b6d4',
+  Subscriptions: '#f97316', Bills: '#64748b', Education: '#84cc16',
+}
+
 function SpendingThisMonth({ logs }) {
-  const today = new Date()
+  const tooltipStyle = useTooltipStyle()
+  const today    = new Date()
   const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   const monthLogs = logs.filter(l => l.date?.startsWith(monthKey) && l.spending?.length)
-  const allSpend  = monthLogs.flatMap(l => l.spending)
+  const allSpend  = monthLogs.flatMap(l => l.spending.map(s => ({ ...s, date: l.date })))
   const total     = allSpend.reduce((s, e) => s + e.amount, 0)
   const remaining = Math.max(0, SPEND_CAP - total)
   const over      = total > SPEND_CAP
@@ -561,43 +568,136 @@ function SpendingThisMonth({ logs }) {
   const dailyRate = dom > 0 ? Math.round(total / dom) : 0
   const daysLeft  = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - dom
 
+  // Category breakdown for pie chart
+  const catMap = {}
+  allSpend.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount })
+  const catData = Object.entries(catMap)
+    .map(([name, value]) => ({ name, value, color: CAT_COLORS[name] || '#94a3b8' }))
+    .sort((a, b) => b.value - a.value)
+
+  // Daily spend bar chart
+  const last14 = []
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i)
+    const key = d.toISOString().split('T')[0]
+    const dayTotal = allSpend.filter(e => e.date === key).reduce((s, e) => s + e.amount, 0)
+    last14.push({ date: key.slice(5), amount: dayTotal })
+  }
+
+  const recentTx = [...allSpend].sort((a, b) => b.date?.localeCompare(a.date)).slice(0, 20)
+
   if (!monthLogs.length) return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center text-gray-400 text-sm py-6">
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center text-gray-400 text-sm py-8">
+      <div className="text-3xl mb-2">💳</div>
       No spending logged yet this month
     </div>
   )
 
   return (
-    <div className={`rounded-2xl p-4 border ${over ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100 shadow-sm'}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Actual Spend · {today.toLocaleDateString('en-IN', { month: 'short' })}</div>
-          <div className={`text-3xl font-black mt-0.5 ${over ? 'text-red-500' : 'text-gray-800'}`}>₹{total.toLocaleString()}</div>
-        </div>
-        <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ${over ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
-          {over ? '⚠ Over' : '✓ On track'}
-        </div>
-      </div>
-      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-2">
-        <div className={`h-full rounded-full transition-all ${over ? 'bg-red-400' : 'bg-indigo-400'}`}
-          style={{ width: `${pct}%` }} />
-      </div>
-      <div className="flex justify-between text-xs text-gray-400 mb-3">
-        <span>{pct}% used · {daysLeft} days left</span>
-        <span>{over ? `₹${(total - SPEND_CAP).toLocaleString()} over` : `₹${remaining.toLocaleString()} left`}</span>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: '₹/day rate',  val: `₹${dailyRate}`,        sub: `ideal ₹${Math.round(SPEND_CAP/30)}`, color: dailyRate > SPEND_CAP/30 ? 'text-red-500' : 'text-indigo-600' },
-          { label: 'Spent',       val: `₹${total.toLocaleString()}`, sub: `of ₹${SPEND_CAP/1000}k cap`,   color: 'text-gray-700' },
-          { label: 'Daily budget', val: `₹${daysLeft > 0 ? Math.round(remaining / daysLeft) : 0}`, sub: 'left per day', color: 'text-emerald-600' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-2.5 border border-gray-100">
-            <div className="text-xs text-gray-400">{s.label}</div>
-            <div className={`text-sm font-bold ${s.color}`}>{s.val}</div>
-            <div className="text-xs text-gray-400">{s.sub}</div>
+    <div className="space-y-3">
+      {/* Summary card */}
+      <div className={`rounded-2xl p-4 border ${over ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100 shadow-sm'}`}>
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">Actual Spend · {today.toLocaleDateString('en-IN', { month: 'short' })}</div>
+            <div className={`text-3xl font-black mt-0.5 ${over ? 'text-red-500' : 'text-gray-800'}`}>₹{total.toLocaleString()}</div>
           </div>
-        ))}
+          <div className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ${over ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
+            {over ? '⚠ Over' : '✓ On track'}
+          </div>
+        </div>
+        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-2">
+          <div className={`h-full rounded-full transition-all ${over ? 'bg-red-400' : 'bg-indigo-400'}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div className="flex justify-between text-xs text-gray-400 mb-3">
+          <span>{pct}% used · {daysLeft} days left</span>
+          <span>{over ? `₹${(total - SPEND_CAP).toLocaleString()} over` : `₹${remaining.toLocaleString()} left`}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: '₹/day rate',   val: `₹${dailyRate}`,    sub: `ideal ₹${Math.round(SPEND_CAP/30)}`, color: dailyRate > SPEND_CAP/30 ? 'text-red-500' : 'text-indigo-600' },
+            { label: 'Spent',        val: `₹${total.toLocaleString()}`, sub: `of ₹${(SPEND_CAP/1000).toFixed(0)}k cap`, color: 'text-gray-700' },
+            { label: 'Daily budget', val: `₹${daysLeft > 0 ? Math.round(remaining / daysLeft) : 0}`, sub: 'left per day', color: 'text-emerald-600' },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-xl p-2.5 border border-gray-100">
+              <div className="text-xs text-gray-400">{s.label}</div>
+              <div className={`text-sm font-bold ${s.color}`}>{s.val}</div>
+              <div className="text-xs text-gray-400">{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Category wheel + breakdown */}
+      {catData.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+          <h3 className="text-gray-700 font-semibold text-sm mb-3">By Category</h3>
+          <div className="flex gap-4 items-center">
+            <PieChart width={120} height={120}>
+              <Pie data={catData} cx={55} cy={55} innerRadius={32} outerRadius={55} dataKey="value" paddingAngle={2}>
+                {catData.map((d, i) => <Cell key={i} fill={d.color} />)}
+              </Pie>
+              <Tooltip contentStyle={tooltipStyle} formatter={v => [`₹${Number(v).toLocaleString()}`, '']} />
+            </PieChart>
+            <div className="flex-1 space-y-1.5 min-w-0">
+              {catData.map(d => (
+                <div key={d.name} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                  <span className="text-xs text-gray-600 flex-1 truncate">{d.name}</span>
+                  <span className="text-xs font-bold text-gray-700 shrink-0">₹{d.value.toLocaleString()}</span>
+                  <span className="text-xs text-gray-400 w-7 text-right shrink-0">{Math.round(d.value / total * 100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily spend bar chart */}
+      {last14.some(d => d.amount > 0) && (
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+          <h3 className="text-gray-700 font-semibold text-sm mb-3">Daily Spend · Last 14 days</h3>
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={last14} barSize={14}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 9, fill: '#94a3b8' }} />
+              <YAxis stroke="#cbd5e1" tick={{ fontSize: 9, fill: '#94a3b8' }} width={36}
+                tickFormatter={v => `₹${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} />
+              <Tooltip contentStyle={tooltipStyle} formatter={v => [`₹${Number(v).toLocaleString()}`, 'Spent']} />
+              <ReferenceLine y={Math.round(SPEND_CAP / 30)} stroke="#f59e0b" strokeDasharray="3 3"
+                label={{ value: 'daily avg', position: 'insideTopRight', fontSize: 8, fill: '#f59e0b' }} />
+              <Bar dataKey="amount" fill="#6366f1" radius={[3, 3, 0, 0]}
+                cell={({ amount }) => <rect fill={amount > SPEND_CAP / 30 ? '#ef4444' : '#6366f1'} />} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Transaction history */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Transactions</span>
+          <span className="text-xs text-gray-400">{allSpend.length} items</span>
+        </div>
+        {recentTx.length === 0 ? (
+          <div className="text-center text-gray-300 text-sm py-6">No transactions</div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {recentTx.map((tx, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
+                  style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
+                  {tx.category?.[0] || '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
+                  <div className="text-xs text-gray-400">{tx.category} · {tx.date?.slice(5)}</div>
+                </div>
+                <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
