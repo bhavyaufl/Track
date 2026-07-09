@@ -88,7 +88,7 @@ function BodyProgress() {
           />
         )}
 
-        <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handleFile} />
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
@@ -682,7 +682,7 @@ function CardioSection() {
 
         {/* Photo upload */}
         <div className="mb-3">
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
           {photo ? (
             <div className="relative">
               <img src={photo} alt="Treadmill display" className="w-full h-40 object-contain rounded-xl bg-gray-50 border border-gray-100" />

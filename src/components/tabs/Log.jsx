@@ -275,7 +275,7 @@ export default function Log({ onLogged }) {
       {/* Input row */}
       <div className="flex gap-2 shrink-0 pb-1">
         {/* Hidden file input */}
-        <input ref={fileRef} type="file" accept="image/*" capture="environment"
+        <input ref={fileRef} type="file" accept="image/*"
           className="hidden" onChange={handleImagePick} />
 
         {/* Camera button */}
