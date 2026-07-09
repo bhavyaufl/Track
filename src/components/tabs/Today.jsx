@@ -703,14 +703,18 @@ function buildInitialMeals(log) {
 
 function EditLogModal({ log, onClose, onSaved }) {
   const [meals,      setMeals]      = useState(() => buildInitialMeals(log))
-  const [calories,   setCalories]   = useState(log?.calories || 0)
   const [macros,     setMacros]     = useState(log?.macros   || { p: 0, c: 0, f: 0 })
+  const [calOverride, setCalOverride] = useState(null)  // null = auto-calculate
   const [steps,      setSteps]      = useState(log?.steps    || 0)
   const [weight,     setWeight]     = useState(log?.weight   || '')
   const [screenTime, setScreenTime] = useState(log?.screen_time || 0)
   const [spending,   setSpending]   = useState(log?.spending  || [])
   const [newItem,    setNewItem]    = useState({ item: '', category: 'Food', amount: '' })
   const [saving,     setSaving]     = useState(false)
+
+  function calcMealCal(m) { return (m.calories ?? ((m.macros?.p||0)*4 + (m.macros?.c||0)*4 + (m.macros?.f||0)*9)) }
+  const autoCal = Math.round(meals.reduce((s, m) => s + calcMealCal(m), 0)) || ((macros.p||0)*4 + (macros.c||0)*4 + (macros.f||0)*9)
+  const displayCal = calOverride !== null ? calOverride : autoCal
 
   function setMacro(k, v) { setMacros(m => ({ ...m, [k]: Number(v) || 0 })) }
   function removeSpend(i)  { setSpending(prev => prev.filter((_, j) => j !== i)) }
@@ -735,10 +739,14 @@ function EditLogModal({ log, onClose, onSaved }) {
     const cleanMeals = meals
       .filter(m => m.text?.trim())
       .map((m, i) => ({ label: `Meal ${i+1}`, text: m.text.trim(), time: m.time || '', macros: m.macros || {p:0,c:0,f:0} }))
+    const finalCal = calOverride !== null ? Number(calOverride) : Math.round(cleanMeals.reduce((s, m) => s + calcMealCal(m), 0)) || ((macros.p||0)*4 + (macros.c||0)*4 + (macros.f||0)*9)
+    const p = cleanMeals.reduce((s, m) => s + (m.macros?.p || 0), 0) || macros.p
+    const c = cleanMeals.reduce((s, m) => s + (m.macros?.c || 0), 0) || macros.c
+    const f = cleanMeals.reduce((s, m) => s + (m.macros?.f || 0), 0) || macros.f
     await supabase.from('daily_logs').update({
       meals:       cleanMeals,
-      calories:    Number(calories)   || 0,
-      macros,
+      calories:    finalCal,
+      macros:      { p, c, f },
       steps:       Number(steps)      || 0,
       weight:      weight ? Number(weight) : null,
       screen_time: Number(screenTime) || 0,
@@ -806,12 +814,26 @@ function EditLogModal({ log, onClose, onSaved }) {
           </section>
 
           <section>
-            <h4 className="text-gray-700 font-semibold text-sm mb-3">Macros & Calories</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Calories (kcal)" type="number" value={calories}  onChange={setCalories} />
-              <Field label="Protein (g)"     type="number" value={macros.p}  onChange={v => setMacro('p', v)} />
-              <Field label="Carbs (g)"       type="number" value={macros.c}  onChange={v => setMacro('c', v)} />
-              <Field label="Fat (g)"         type="number" value={macros.f}  onChange={v => setMacro('f', v)} />
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-gray-700 font-semibold text-sm">Macros & Calories</h4>
+              {calOverride !== null && (
+                <button onClick={() => setCalOverride(null)} className="text-xs text-indigo-500 hover:text-indigo-700">↺ auto</button>
+              )}
+            </div>
+            <div className="bg-indigo-50 rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                {calOverride !== null ? 'Manual override' : 'Auto from macros'}
+              </div>
+              <input type="number" value={displayCal}
+                onChange={e => setCalOverride(e.target.value)}
+                className="text-right text-lg font-black text-indigo-600 bg-transparent focus:outline-none w-24"
+              />
+              <span className="text-xs text-gray-400 ml-1">kcal</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Protein (g)" type="number" value={macros.p} onChange={v => setMacro('p', v)} />
+              <Field label="Carbs (g)"   type="number" value={macros.c} onChange={v => setMacro('c', v)} />
+              <Field label="Fat (g)"     type="number" value={macros.f} onChange={v => setMacro('f', v)} />
             </div>
           </section>
 

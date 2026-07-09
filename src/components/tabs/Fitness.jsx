@@ -764,13 +764,166 @@ function CardioSection() {
   )
 }
 
+// ─── Relapse / Rejuvenated Calendar ──────────────────────────────────────────
+const RELAPSE_KEY = 'relapseLog_v1'
+
+function loadRelapseLog() {
+  try { return JSON.parse(localStorage.getItem(RELAPSE_KEY) || '{}') } catch { return {} }
+}
+
+function RelapseCalendar() {
+  const [log, setLog]       = useState(loadRelapseLog)
+  const [picker, setPicker] = useState(null)  // date string being picked
+
+  const today = todayIST()
+  const [viewDate, setViewDate] = useState(() => {
+    const d = new Date(today)
+    return { year: d.getFullYear(), month: d.getMonth() }
+  })
+
+  function mark(date, state) {
+    const updated = { ...log }
+    if (state === null) delete updated[date]
+    else updated[date] = state
+    setLog(updated)
+    localStorage.setItem(RELAPSE_KEY, JSON.stringify(updated))
+    setPicker(null)
+  }
+
+  function prevMonth() {
+    setViewDate(v => {
+      const m = v.month === 0 ? 11 : v.month - 1
+      const y = v.month === 0 ? v.year - 1 : v.year
+      return { year: y, month: m }
+    })
+  }
+  function nextMonth() {
+    setViewDate(v => {
+      const m = v.month === 11 ? 0 : v.month + 1
+      const y = v.month === 11 ? v.year + 1 : v.year
+      return { year: y, month: m }
+    })
+  }
+
+  const { year, month } = viewDate
+  const firstDay  = new Date(year, month, 1).getDay()
+  const daysInMon = new Date(year, month + 1, 0).getDate()
+  const monthName = new Date(year, month, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+
+  const relapseCount     = Object.values(log).filter(v => v === 'relapsed').length
+  const rejuvenatedCount = Object.values(log).filter(v => v === 'rejuvenated').length
+  const streak = (() => {
+    let s = 0, d = new Date(today)
+    while (true) {
+      const k = d.toISOString().split('T')[0]
+      if (log[k] === 'rejuvenated') { s++; d.setDate(d.getDate() - 1) }
+      else break
+    }
+    return s
+  })()
+
+  return (
+    <div className="space-y-3">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 text-center">
+          <div className="text-2xl font-black text-emerald-600">{rejuvenatedCount}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Rejuvenated 💚</div>
+        </div>
+        <div className="bg-red-50 rounded-xl p-3 border border-red-100 text-center">
+          <div className="text-2xl font-black text-red-500">{relapseCount}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Relapsed 🔴</div>
+        </div>
+        <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100 text-center">
+          <div className="text-2xl font-black text-indigo-600">{streak}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Day streak 🔥</div>
+        </div>
+      </div>
+
+      {/* Calendar */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={prevMonth} className="text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50 text-lg">‹</button>
+          <span className="text-sm font-bold text-gray-700">{monthName}</span>
+          <button onClick={nextMonth} className="text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50 text-lg">›</button>
+        </div>
+
+        {/* Day headers */}
+        <div className="grid grid-cols-7 mb-1">
+          {['S','M','T','W','T','F','S'].map((d, i) => (
+            <div key={i} className="text-center text-xs font-semibold text-gray-300 py-1">{d}</div>
+          ))}
+        </div>
+
+        {/* Days */}
+        <div className="grid grid-cols-7 gap-y-1">
+          {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+          {Array.from({ length: daysInMon }).map((_, i) => {
+            const day  = i + 1
+            const date = `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+            const state   = log[date]
+            const isToday = date === today
+            const isFuture = date > today
+
+            return (
+              <button key={day} disabled={isFuture}
+                onClick={() => !isFuture && setPicker(date)}
+                className={`aspect-square rounded-xl mx-0.5 flex items-center justify-center text-xs font-bold transition-all
+                  ${isFuture ? 'opacity-20 cursor-default' : 'hover:opacity-80 cursor-pointer'}
+                  ${state === 'relapsed'    ? 'bg-red-500 text-white'     :
+                    state === 'rejuvenated' ? 'bg-emerald-500 text-white' :
+                    isToday                 ? 'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-400' :
+                                              'text-gray-500 hover:bg-gray-50'}
+                `}>
+                {day}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 mt-4 pt-3 border-t border-gray-50 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-500" /> Rejuvenated</div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500" /> Relapsed</div>
+          <div className="ml-auto">tap a day to mark</div>
+        </div>
+      </div>
+
+      {/* Picker sheet */}
+      {picker && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={() => setPicker(null)}>
+          <div className="bg-white rounded-t-3xl w-full p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="text-center text-xs text-gray-400 mb-1">Mark day</div>
+            <div className="text-center font-bold text-gray-700 mb-5">{picker}</div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <button onClick={() => mark(picker, 'relapsed')}
+                className="bg-red-500 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-red-600 transition-colors">
+                🔴 Relapsed
+              </button>
+              <button onClick={() => mark(picker, 'rejuvenated')}
+                className="bg-emerald-500 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-emerald-600 transition-colors">
+                💚 Rejuvenated
+              </button>
+            </div>
+            {log[picker] && (
+              <button onClick={() => mark(picker, null)}
+                className="w-full text-gray-400 text-sm py-2 hover:text-gray-600 transition-colors">
+                Clear mark
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Fitness({ logs, levels }) {
   const [tab, setTab] = useState('plan')
 
   return (
     <div className="space-y-4 fade-up">
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[['plan','📅'],['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['cardio','🏃']].map(([id, label]) => (
+        {[['plan','📅'],['levels','🏋️'],['weight','⚖️'],['body','📸'],['screen','📱'],['cardio','🏃'],['relapse','🔴']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex-1 py-1.5 text-sm rounded-lg transition-all ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm font-medium' : 'text-gray-400 hover:text-gray-600'
@@ -812,6 +965,8 @@ export default function Fitness({ logs, levels }) {
       {tab === 'screen' && <ScreenTime logs={logs} />}
 
       {tab === 'cardio' && <CardioSection />}
+
+      {tab === 'relapse' && <RelapseCalendar />}
     </div>
   )
 }
