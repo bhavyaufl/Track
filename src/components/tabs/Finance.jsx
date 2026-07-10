@@ -584,7 +584,30 @@ function SpendingThisMonth({ logs }) {
     last14.push({ date: key.slice(5), amount: dayTotal })
   }
 
-  const recentTx = [...allSpend].sort((a, b) => b.date?.localeCompare(a.date)).slice(0, 20)
+  // Group transactions by date, then by ISO week
+  const txByDate = {}
+  ;[...allSpend].sort((a, b) => b.date?.localeCompare(a.date)).forEach(tx => {
+    if (!txByDate[tx.date]) txByDate[tx.date] = []
+    txByDate[tx.date].push(tx)
+  })
+
+  function isoWeek(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00')
+    const jan4 = new Date(d.getFullYear(), 0, 4)
+    const diff = d - jan4
+    return Math.ceil((diff / 86400000 + jan4.getDay() + 1) / 7)
+  }
+
+  // Build week groups: [{ weekNum, weekLabel, days: [{ date, txs, dayTotal }], weekTotal }]
+  const weekMap = {}
+  Object.entries(txByDate).forEach(([date, txs]) => {
+    const w = isoWeek(date)
+    if (!weekMap[w]) weekMap[w] = { weekNum: w, days: [] }
+    weekMap[w].days.push({ date, txs, dayTotal: txs.reduce((s, t) => s + t.amount, 0) })
+  })
+  const weekGroups = Object.values(weekMap)
+    .map(wk => ({ ...wk, weekTotal: wk.days.reduce((s, d) => s + d.dayTotal, 0) }))
+    .sort((a, b) => b.weekNum - a.weekNum)
 
   if (!monthLogs.length) return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center text-gray-400 text-sm py-8">
@@ -673,31 +696,67 @@ function SpendingThisMonth({ logs }) {
         </div>
       )}
 
-      {/* Transaction history */}
+      {/* Transaction history — grouped by day and week */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Transactions</span>
-          <span className="text-xs text-gray-400">{allSpend.length} items</span>
+          <span className="text-xs font-bold text-gray-700">Monthly: ₹{total.toLocaleString()}</span>
         </div>
-        {recentTx.length === 0 ? (
+
+        {weekGroups.length === 0 ? (
           <div className="text-center text-gray-300 text-sm py-6">No transactions</div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {recentTx.map((tx, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
-                  style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
-                  {tx.category?.[0] || '?'}
+        ) : weekGroups.map((wk, wi) => (
+          <div key={wk.weekNum}>
+            {/* Week header */}
+            <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50 border-y border-gray-100">
+              <span className="text-xs font-bold text-gray-500">Week {wk.weekNum}</span>
+              <span className="text-xs font-bold text-indigo-600">₹{wk.weekTotal.toLocaleString()}</span>
+            </div>
+
+            {wk.days.map((day, di) => {
+              const d = new Date(day.date + 'T00:00:00')
+              const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+              const isToday  = day.date === today.toISOString().split('T')[0]
+              return (
+                <div key={day.date}>
+                  {/* Day header */}
+                  <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-600">{dayLabel}</span>
+                      {isToday && <span className="text-xs bg-indigo-50 text-indigo-500 font-bold px-1.5 py-0.5 rounded">Today</span>}
+                    </div>
+                    <span className="text-xs font-bold text-gray-500">₹{day.dayTotal.toLocaleString()}</span>
+                  </div>
+
+                  {/* Day transactions */}
+                  <div className="divide-y divide-gray-50">
+                    {day.txs.map((tx, ti) => (
+                      <div key={ti} className="flex items-center gap-3 px-4 py-2.5">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
+                          style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
+                          {tx.category?.[0] || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
+                          <div className="text-xs text-gray-400">{tx.category}</div>
+                        </div>
+                        <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
-                  <div className="text-xs text-gray-400">{tx.category} · {tx.date?.slice(5)}</div>
-                </div>
-                <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
-        )}
+        ))}
+
+        {/* Monthly footer */}
+        <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border-t border-indigo-100">
+          <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">
+            {today.toLocaleDateString('en-IN', { month: 'long' })} Total
+          </span>
+          <span className="text-sm font-black text-indigo-700">₹{total.toLocaleString()}</span>
+        </div>
       </div>
     </div>
   )
