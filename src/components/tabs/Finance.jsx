@@ -23,8 +23,8 @@ const FIXED_MONTHLY = FIXED_SUBS.reduce((s, x) => s + x.amount, 0)  // 2338
 
 const DEFAULT_SALARY    = 64800
 const DEFAULT_PORTFOLIO = [
-  { platform: 'PhonePe MF',                    invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
-  { platform: 'Kite',                           invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
+  { platform: 'PhonePe MF',                    invested: 3000,  current: 3062,  color: '#6366f1', emoji: '📱' },
+  { platform: 'Kite',                           invested: 10266, current: 12047, color: '#f59e0b', emoji: '📈' },
   { platform: 'Compounding Wealth Advisors MF', invested: 2124,  current: 2124,  color: '#10b981', emoji: '🌱' },
   { platform: 'Axis MF (SIP ₹5k/mo)',          invested: 5000,  current: 5000,  color: '#ec4899', emoji: '📊' },
   { platform: 'SIP Fund (₹1k/mo)',             invested: 1000,  current: 1000,  color: '#8b5cf6', emoji: '💸' },
