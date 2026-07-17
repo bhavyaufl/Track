@@ -26,6 +26,8 @@ const DEFAULT_PORTFOLIO = [
   { platform: 'PhonePe MF',                    invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
   { platform: 'Kite',                           invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
   { platform: 'Compounding Wealth Advisors MF', invested: 2124,  current: 2124,  color: '#10b981', emoji: '🌱' },
+  { platform: 'Axis MF (SIP ₹5k/mo)',          invested: 5000,  current: 5000,  color: '#ec4899', emoji: '📊' },
+  { platform: 'SIP Fund (₹1k/mo)',             invested: 1000,  current: 1000,  color: '#8b5cf6', emoji: '💸' },
 ]
 const DEFAULT_NEEDS = [
   { label: 'Groceries',     amount: 7000, note: 'Home + office canteen' },
@@ -44,7 +46,8 @@ const DEFAULT_WANTS = [
 function loadSalary()    { try { return Number(localStorage.getItem('monthlySalary_v1'))  || DEFAULT_SALARY    } catch { return DEFAULT_SALARY } }
 function loadPortfolio() { try { return JSON.parse(localStorage.getItem('portfolio'))      || DEFAULT_PORTFOLIO } catch { return DEFAULT_PORTFOLIO } }
 function loadVacBal()    { try { const v = localStorage.getItem('vacationBal_v2');  return v !== null ? Number(v) : 0 } catch { return 0 } }
-function loadSpendBal()  { try { const v = localStorage.getItem('spendingBal_v1'); return v !== null ? Number(v) : 6279 } catch { return 6279 } }
+function loadSpendBal()  { try { const v = localStorage.getItem('spendingBal_v1'); return v !== null ? Number(v) : 18400 } catch { return 18400 } }
+function loadIobBal()   { try { const v = localStorage.getItem('iobBal_v1');      return v !== null ? Number(v) : 50000 } catch { return 50000 } }
 function loadVacMonthly() { try { const v = localStorage.getItem('vacationMonthly_v1'); return v !== null ? Number(v) : VACATION_MONTHLY } catch { return VACATION_MONTHLY } }
 function loadNeeds()     { try { return JSON.parse(localStorage.getItem('budgetNeeds_v2')) || DEFAULT_NEEDS     } catch { return DEFAULT_NEEDS } }
 function loadWants()     { try { return JSON.parse(localStorage.getItem('budgetWants_v1')) || DEFAULT_WANTS     } catch { return DEFAULT_WANTS } }
@@ -409,7 +412,7 @@ function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary, vacMonthly 
 // SPENDING TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal, vacMonthly, onUpdateVacMonthly, spendTotal }) {
+function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal, iobBal, onUpdateIobBal, vacMonthly, onUpdateVacMonthly, spendTotal }) {
   const tooltipStyle = useTooltipStyle()
   const sip = calcSip(salary, vacMonthly)
   const varDisplay = spendTotal ?? SPEND_CAP
@@ -435,11 +438,18 @@ function MonthlyAllocation({ salary, onUpdateSalary, spendBal, onUpdateSpendBal,
             <div className="text-xs text-gray-400 mt-0.5">tap to update</div>
           </div>
           <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
-            <div className="text-xs text-gray-400 mb-1">Spending a/c balance</div>
+            <div className="text-xs text-gray-400 mb-1">ICICI (spending a/c)</div>
             <InlineEdit value={spendBal} onSave={v => { onUpdateSpendBal(v); localStorage.setItem('spendingBal_v1', v) }}
               className="text-xl font-black text-indigo-600"
               inputClass="w-24 text-base font-black text-indigo-700" />
             <div className="text-xs text-gray-400 mt-0.5">tap to update</div>
+          </div>
+          <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 col-span-2">
+            <div className="text-xs text-gray-400 mb-1">IOB (savings a/c)</div>
+            <InlineEdit value={iobBal} onSave={v => { onUpdateIobBal(v); localStorage.setItem('iobBal_v1', v) }}
+              className="text-xl font-black text-amber-600"
+              inputClass="w-28 text-base font-black text-amber-700" />
+            <div className="text-xs text-gray-400 mt-0.5">tap to update · total liquid: ₹{(iobBal + spendBal).toLocaleString()}</div>
           </div>
         </div>
       </div>
@@ -879,6 +889,7 @@ export default function Finance({ logs }) {
   const [vacMonthly, setVacMonthly] = useState(loadVacMonthly)
   const [needsTotal, setNeedsTotal] = useState(() => (loadNeeds()).reduce((s, c) => s + c.amount, 0))
   const [wantsTotal, setWantsTotal] = useState(() => (loadWants()).reduce((s, c) => s + c.amount, 0))
+  const [iobBal,     setIobBal]     = useState(loadIobBal)
 
   const spendTotal = needsTotal + wantsTotal
 
@@ -910,7 +921,7 @@ export default function Finance({ logs }) {
 
       {tab === 'spending' && (
         <div className="space-y-3">
-          <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} vacMonthly={vacMonthly} onUpdateVacMonthly={setVacMonthly} spendTotal={spendTotal} />
+          <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} iobBal={iobBal} onUpdateIobBal={setIobBal} vacMonthly={vacMonthly} onUpdateVacMonthly={setVacMonthly} spendTotal={spendTotal} />
           <SpendingThisMonth logs={logs} />
           <BudgetSection title="Needs" emoji="🧾" color="#6366f1"
             storageKey="budgetNeeds_v2" defaults={DEFAULT_NEEDS} onTotalChange={setNeedsTotal} />
