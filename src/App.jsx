@@ -112,6 +112,11 @@ export default function App() {
               style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
               <div className="text-xs font-bold text-white">⚡{totalXP.toLocaleString()}</div>
             </div>
+            <button onClick={refresh}
+              className="w-7 h-7 rounded-xl flex items-center justify-center bg-gray-50 border border-gray-100 text-sm transition-colors hover:bg-gray-100"
+              title="Refresh data">
+              🔄
+            </button>
             <button onClick={() => setDark(d => !d)}
               className="w-7 h-7 rounded-xl flex items-center justify-center bg-gray-50 border border-gray-100 text-sm transition-colors hover:bg-gray-100"
               title="Toggle dark mode">
