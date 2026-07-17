@@ -751,67 +751,180 @@ function SpendingThisMonth({ logs }) {
         </div>
       )}
 
-      {/* Transaction history — grouped by day and week */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Transactions</span>
-          <span className="text-xs font-bold text-gray-700">Monthly: ₹{total.toLocaleString()}</span>
-        </div>
+    </div>
+  )
+}
 
-        {weekGroups.length === 0 ? (
-          <div className="text-center text-gray-300 text-sm py-6">No transactions</div>
-        ) : weekGroups.map((wk, wi) => (
-          <div key={wk.weekNum}>
-            {/* Week header */}
-            <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50 border-y border-gray-100">
-              <span className="text-xs font-bold text-gray-500">Week {wk.weekNum}</span>
-              <span className="text-xs font-bold text-indigo-600">₹{wk.weekTotal.toLocaleString()}</span>
-            </div>
+function BudgetVsActual({ logs }) {
+  const today    = new Date()
+  const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  const allSpend = logs.filter(l => l.date?.startsWith(monthKey) && l.spending?.length)
+    .flatMap(l => l.spending.map(s => ({ ...s, date: l.date })))
 
-            {wk.days.map((day, di) => {
-              const d = new Date(day.date + 'T00:00:00')
-              const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
-              const isToday  = day.date === today.toISOString().split('T')[0]
-              return (
-                <div key={day.date}>
-                  {/* Day header */}
-                  <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-50">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-600">{dayLabel}</span>
-                      {isToday && <span className="text-xs bg-indigo-50 text-indigo-500 font-bold px-1.5 py-0.5 rounded">Today</span>}
-                    </div>
-                    <span className="text-xs font-bold text-gray-500">₹{day.dayTotal.toLocaleString()}</span>
-                  </div>
+  const actualBy = {}
+  allSpend.forEach(e => { actualBy[e.category] = (actualBy[e.category] || 0) + e.amount })
 
-                  {/* Day transactions */}
-                  <div className="divide-y divide-gray-50">
-                    {day.txs.map((tx, ti) => (
-                      <div key={ti} className="flex items-center gap-3 px-4 py-2.5">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
-                          style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
-                          {tx.category?.[0] || '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
-                          <div className="text-xs text-gray-400">{tx.category}</div>
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
+  const needs = loadNeeds()
+  const wants = loadWants()
+
+  const fuelBudget   = needs.find(n => n.label === 'Fuel')?.amount   || 2000
+  const travelBudget = needs.find(n => n.label === 'Travel')?.amount || 1500
+
+  const budgetLines = [
+    { label: 'Groceries',    budget: needs.find(n => n.label === 'Groceries')?.amount    || 7000, cats: ['Groceries'],    color: '#6366f1' },
+    { label: 'Transport',    budget: fuelBudget + travelBudget,                                    cats: ['Transport'],    color: '#f59e0b' },
+    { label: 'Personal care',budget: needs.find(n => n.label === 'Personal care')?.amount || 1500, cats: [],               color: '#ec4899' },
+    { label: 'Bills',        budget: needs.find(n => n.label === 'Bills')?.amount        || 1000, cats: ['Bills'],        color: '#64748b' },
+    { label: 'Dining',       budget: wants.find(w => w.label === 'Dining')?.amount       || 5000, cats: ['Food'],         color: '#8b5cf6' },
+    { label: 'Activities',   budget: wants.find(w => w.label === 'Activities')?.amount   || 3000, cats: ['Entertainment'],color: '#10b981' },
+    { label: 'Shopping',     budget: wants.find(w => w.label.toLowerCase().includes('shop'))?.amount || 4000, cats: ['Shopping'], color: '#f97316' },
+  ]
+
+  const budgetedCats = new Set(budgetLines.flatMap(b => b.cats))
+  const unbudgeted   = {}
+  allSpend.forEach(e => { if (!budgetedCats.has(e.category)) unbudgeted[e.category] = (unbudgeted[e.category] || 0) + e.amount })
+
+  const totalBudget = budgetLines.reduce((s, b) => s + b.budget, 0)
+  const totalActual = allSpend.reduce((s, e) => s + e.amount, 0)
+  const totalUnbudgeted = Object.values(unbudgeted).reduce((s, v) => s + v, 0)
+
+  return (
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-gray-700 font-semibold text-sm">Budget vs Actual</h3>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${totalActual > totalBudget ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+          {totalActual > totalBudget ? `₹${(totalActual - totalBudget).toLocaleString()} over` : `₹${(totalBudget - totalActual).toLocaleString()} left`}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {budgetLines.map(line => {
+          const actual = line.cats.reduce((s, c) => s + (actualBy[c] || 0), 0)
+          const pct    = Math.min(100, Math.round(actual / line.budget * 100))
+          const over   = actual > line.budget
+          return (
+            <div key={line.label}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-gray-600">{line.label}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-xs font-bold ${over ? 'text-red-500' : 'text-gray-700'}`}>₹{actual.toLocaleString()}</span>
+                  <span className="text-xs text-gray-300">/</span>
+                  <span className="text-xs text-gray-400">₹{line.budget.toLocaleString()}</span>
+                  {over && <span className="text-xs font-bold text-red-500 bg-red-50 px-1 rounded">over</span>}
                 </div>
-              )
-            })}
-          </div>
-        ))}
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: over ? '#ef4444' : line.color }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
-        {/* Monthly footer */}
-        <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border-t border-indigo-100">
-          <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">
-            {today.toLocaleDateString('en-IN', { month: 'long' })} Total
-          </span>
-          <span className="text-sm font-black text-indigo-700">₹{total.toLocaleString()}</span>
+      {Object.keys(unbudgeted).length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-50">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Unbudgeted this month</div>
+          <div className="space-y-1.5">
+            {Object.entries(unbudgeted).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+              <div key={cat} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: CAT_COLORS[cat] || '#94a3b8' }} />
+                  <span className="text-xs text-gray-500">{cat}</span>
+                </div>
+                <span className="text-xs font-bold text-orange-500">₹{amt.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function TransactionList({ logs }) {
+  const today    = new Date()
+  const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  const monthLogs = logs.filter(l => l.date?.startsWith(monthKey) && l.spending?.length)
+  const allSpend  = monthLogs.flatMap(l => l.spending.map(s => ({ ...s, date: l.date })))
+  const total     = allSpend.reduce((s, e) => s + e.amount, 0)
+
+  function isoWeek(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00')
+    const jan4 = new Date(d.getFullYear(), 0, 4)
+    return Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7)
+  }
+
+  const txByDate = {}
+  ;[...allSpend].sort((a, b) => b.date?.localeCompare(a.date)).forEach(tx => {
+    if (!txByDate[tx.date]) txByDate[tx.date] = []
+    txByDate[tx.date].push(tx)
+  })
+
+  const weekMap = {}
+  Object.entries(txByDate).forEach(([date, txs]) => {
+    const w = isoWeek(date)
+    if (!weekMap[w]) weekMap[w] = { weekNum: w, days: [] }
+    weekMap[w].days.push({ date, txs, dayTotal: txs.reduce((s, t) => s + t.amount, 0) })
+  })
+  const weekGroups = Object.values(weekMap)
+    .map(wk => ({ ...wk, weekTotal: wk.days.reduce((s, d) => s + d.dayTotal, 0) }))
+    .sort((a, b) => b.weekNum - a.weekNum)
+
+  if (!monthLogs.length) return (
+    <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center text-gray-400 text-sm">
+      <div className="text-3xl mb-2">💳</div>No transactions this month
+    </div>
+  )
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">All Transactions</span>
+        <span className="text-xs font-bold text-gray-700">₹{total.toLocaleString()} this month</span>
+      </div>
+      {weekGroups.map(wk => (
+        <div key={wk.weekNum}>
+          <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50 border-y border-gray-100">
+            <span className="text-xs font-bold text-gray-500">Week {wk.weekNum}</span>
+            <span className="text-xs font-bold text-indigo-600">₹{wk.weekTotal.toLocaleString()}</span>
+          </div>
+          {wk.days.map(day => {
+            const d        = new Date(day.date + 'T00:00:00')
+            const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+            const isToday  = day.date === today.toISOString().split('T')[0]
+            return (
+              <div key={day.date}>
+                <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600">{dayLabel}</span>
+                    {isToday && <span className="text-xs bg-indigo-50 text-indigo-500 font-bold px-1.5 py-0.5 rounded">Today</span>}
+                  </div>
+                  <span className="text-xs font-bold text-gray-500">₹{day.dayTotal.toLocaleString()}</span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {day.txs.map((tx, ti) => (
+                    <div key={ti} className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
+                        style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
+                        {tx.category?.[0] || '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
+                        <div className="text-xs text-gray-400">{tx.category}</div>
+                      </div>
+                      <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+      <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border-t border-indigo-100">
+        <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">
+          {today.toLocaleDateString('en-IN', { month: 'long' })} Total
+        </span>
+        <span className="text-sm font-black text-indigo-700">₹{total.toLocaleString()}</span>
       </div>
     </div>
   )
@@ -902,9 +1015,9 @@ export default function Finance({ logs }) {
     <div className="space-y-3 fade-up">
       {/* Tab bar */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {[['portfolio','💼','Portfolio'],['spending','💳','Spending']].map(([id, emoji, label]) => (
+        {[['portfolio','💼','Portfolio'],['spending','💳','Spending'],['transactions','📋','History']].map(([id, emoji, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex-1 py-1.5 text-sm rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1 ${
               tab === id ? 'bg-white text-indigo-600 shadow-sm font-semibold' : 'text-gray-400 hover:text-gray-600'
             }`}>
             <span>{emoji}</span><span>{label}</span>
@@ -923,6 +1036,7 @@ export default function Finance({ logs }) {
         <div className="space-y-3">
           <MonthlyAllocation salary={salary} onUpdateSalary={setSalary} spendBal={spendBal} onUpdateSpendBal={setSpendBal} iobBal={iobBal} onUpdateIobBal={setIobBal} vacMonthly={vacMonthly} onUpdateVacMonthly={setVacMonthly} spendTotal={spendTotal} />
           <SpendingThisMonth logs={logs} />
+          <BudgetVsActual logs={logs} />
           <BudgetSection title="Needs" emoji="🧾" color="#6366f1"
             storageKey="budgetNeeds_v2" defaults={DEFAULT_NEEDS} onTotalChange={setNeedsTotal} />
           <BudgetSection title="Wants" emoji="🎉" color="#ec4899"
@@ -930,6 +1044,8 @@ export default function Finance({ logs }) {
           <VacationFund vacBal={vacBal} onUpdateVacBal={setVacBal} />
         </div>
       )}
+
+      {tab === 'transactions' && <TransactionList logs={logs} />}
     </div>
   )
 }
