@@ -869,6 +869,13 @@ function TransactionList({ logs }) {
     .map(wk => ({ ...wk, weekTotal: wk.days.reduce((s, d) => s + d.dayTotal, 0) }))
     .sort((a, b) => b.weekNum - a.weekNum)
 
+  const [openWeeks, setOpenWeeks] = useState(() => new Set(weekGroups.map(w => w.weekNum)))
+  const toggleWeek = wn => setOpenWeeks(prev => {
+    const next = new Set(prev)
+    next.has(wn) ? next.delete(wn) : next.add(wn)
+    return next
+  })
+
   if (!monthLogs.length) return (
     <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center text-gray-400 text-sm">
       <div className="text-3xl mb-2">💳</div>No transactions this month
@@ -876,55 +883,73 @@ function TransactionList({ logs }) {
   )
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">All Transactions</span>
-        <span className="text-xs font-bold text-gray-700">₹{total.toLocaleString()} this month</span>
-      </div>
-      {weekGroups.map(wk => (
-        <div key={wk.weekNum}>
-          <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50 border-y border-gray-100">
-            <span className="text-xs font-bold text-gray-500">Week {wk.weekNum}</span>
-            <span className="text-xs font-bold text-indigo-600">₹{wk.weekTotal.toLocaleString()}</span>
+    <div className="space-y-2">
+      {/* Month total at top */}
+      <div className="bg-indigo-50 rounded-2xl px-4 py-3 border border-indigo-100 flex items-center justify-between">
+        <div>
+          <div className="text-xs font-bold text-indigo-400 uppercase tracking-wide">
+            {today.toLocaleDateString('en-IN', { month: 'long' })} Total
           </div>
-          {wk.days.map(day => {
-            const d        = new Date(day.date + 'T00:00:00')
-            const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
-            const isToday  = day.date === today.toISOString().split('T')[0]
-            return (
-              <div key={day.date}>
-                <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-600">{dayLabel}</span>
-                    {isToday && <span className="text-xs bg-indigo-50 text-indigo-500 font-bold px-1.5 py-0.5 rounded">Today</span>}
-                  </div>
-                  <span className="text-xs font-bold text-gray-500">₹{day.dayTotal.toLocaleString()}</span>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {day.txs.map((tx, ti) => (
-                    <div key={ti} className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
-                        style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
-                        {tx.category?.[0] || '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
-                        <div className="text-xs text-gray-400">{tx.category}</div>
-                      </div>
-                      <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+          <div className="text-2xl font-black text-indigo-700 mt-0.5">₹{total.toLocaleString()}</div>
         </div>
-      ))}
-      <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border-t border-indigo-100">
-        <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">
-          {today.toLocaleDateString('en-IN', { month: 'long' })} Total
-        </span>
-        <span className="text-sm font-black text-indigo-700">₹{total.toLocaleString()}</span>
+        <div className="text-right">
+          <div className="text-xs text-indigo-400">{allSpend.length} transactions</div>
+          <div className="text-xs text-indigo-500 font-semibold mt-0.5">{weekGroups.length} weeks</div>
+        </div>
+      </div>
+
+      {/* Week dropdowns */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {weekGroups.map((wk, wi) => {
+          const isOpen = openWeeks.has(wk.weekNum)
+          return (
+            <div key={wk.weekNum} className={wi > 0 ? 'border-t border-gray-100' : ''}>
+              {/* Week header — clickable */}
+              <button onClick={() => toggleWeek(wk.weekNum)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{isOpen ? '▾' : '▸'}</span>
+                  <span className="text-xs font-bold text-gray-600">Week {wk.weekNum}</span>
+                  <span className="text-xs text-gray-400">{wk.days.length} days</span>
+                </div>
+                <span className="text-xs font-bold text-indigo-600">₹{wk.weekTotal.toLocaleString()}</span>
+              </button>
+
+              {/* Week body */}
+              {isOpen && wk.days.map(day => {
+                const d        = new Date(day.date + 'T00:00:00')
+                const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+                const isToday  = day.date === today.toISOString().split('T')[0]
+                return (
+                  <div key={day.date}>
+                    <div className="flex items-center justify-between px-4 py-1.5 border-t border-b border-gray-50 bg-white">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-600">{dayLabel}</span>
+                        {isToday && <span className="text-xs bg-indigo-50 text-indigo-500 font-bold px-1.5 py-0.5 rounded">Today</span>}
+                      </div>
+                      <span className="text-xs font-bold text-gray-500">₹{day.dayTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {day.txs.map((tx, ti) => (
+                        <div key={ti} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
+                            style={{ background: CAT_COLORS[tx.category] || '#94a3b8' }}>
+                            {tx.category?.[0] || '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-gray-700 font-medium truncate">{tx.item}</div>
+                            <div className="text-xs text-gray-400">{tx.category}</div>
+                          </div>
+                          <span className="text-sm font-bold text-gray-700 shrink-0">₹{tx.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
