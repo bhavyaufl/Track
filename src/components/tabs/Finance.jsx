@@ -23,8 +23,9 @@ const FIXED_MONTHLY = FIXED_SUBS.reduce((s, x) => s + x.amount, 0)  // 2338
 
 const DEFAULT_SALARY    = 64800
 const DEFAULT_PORTFOLIO = [
-  { platform: 'PhonePe MF', invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
-  { platform: 'Kite',       invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
+  { platform: 'PhonePe MF',                    invested: 3000,  current: 3026,  color: '#6366f1', emoji: '📱' },
+  { platform: 'Kite',                           invested: 10266, current: 11995, color: '#f59e0b', emoji: '📈' },
+  { platform: 'Compounding Wealth Advisors MF', invested: 2124,  current: 2124,  color: '#10b981', emoji: '🌱' },
 ]
 const DEFAULT_NEEDS = [
   { label: 'Groceries',     amount: 7000, note: 'Home + office canteen' },
@@ -223,6 +224,10 @@ function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary, vacMonthly 
   const [editingSip,  setEditingSip]  = useState(false)
   const [sipOverride, setSipOverride] = useState(null)
   const [sipVal, setSipVal] = useState(String(sip))
+  const [addingPlatform, setAddingPlatform] = useState(false)
+  const [newPlatform, setNewPlatform] = useState({ platform: '', invested: '', current: '' })
+  const PLATFORM_COLORS = ['#6366f1','#f59e0b','#10b981','#ec4899','#8b5cf6','#f97316','#06b6d4','#84cc16']
+  const PLATFORM_EMOJIS = ['📱','📈','🌱','💎','🏦','💰','📊','🚀']
 
   const displaySip     = sipOverride !== null ? sipOverride : sip
   const totalInvested  = portfolio.reduce((s, p) => s + p.invested, 0)
@@ -323,6 +328,46 @@ function InvestmentPortfolio({ portfolio, onUpdatePortfolio, salary, vacMonthly 
           )
         })}
       </div>
+
+      {/* Add platform */}
+      {addingPlatform ? (
+        <div className="bg-white rounded-2xl p-4 border border-indigo-200 shadow-sm space-y-2">
+          <div className="text-xs font-bold text-gray-600 mb-1">Add Platform</div>
+          <input placeholder="Platform name" value={newPlatform.platform}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+            onChange={e => setNewPlatform(p => ({ ...p, platform: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <input placeholder="Invested ₹" type="number" value={newPlatform.invested}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+              onChange={e => setNewPlatform(p => ({ ...p, invested: e.target.value }))} />
+            <input placeholder="Current ₹" type="number" value={newPlatform.current}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+              onChange={e => setNewPlatform(p => ({ ...p, current: e.target.value }))} />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => {
+              if (!newPlatform.platform) return
+              const idx = portfolio.length % PLATFORM_COLORS.length
+              onUpdatePortfolio([...portfolio, {
+                platform: newPlatform.platform,
+                invested: parseFloat(newPlatform.invested) || 0,
+                current: parseFloat(newPlatform.current) || parseFloat(newPlatform.invested) || 0,
+                color: PLATFORM_COLORS[idx],
+                emoji: PLATFORM_EMOJIS[idx],
+              }])
+              setNewPlatform({ platform: '', invested: '', current: '' })
+              setAddingPlatform(false)
+            }} className="flex-1 bg-indigo-600 text-white rounded-xl py-2 text-sm font-bold">Add</button>
+            <button onClick={() => setAddingPlatform(false)}
+              className="px-4 border border-gray-200 rounded-xl text-sm text-gray-500">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAddingPlatform(true)}
+          className="w-full border-2 border-dashed border-gray-200 rounded-2xl py-3 text-sm text-gray-400 font-medium hover:border-indigo-300 hover:text-indigo-500 transition-colors">
+          + Add Platform
+        </button>
+      )}
 
       {/* SIP card */}
       <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
