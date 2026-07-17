@@ -44,7 +44,7 @@ const DEFAULT_WANTS = [
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 function loadSalary()    { try { return Number(localStorage.getItem('monthlySalary_v1'))  || DEFAULT_SALARY    } catch { return DEFAULT_SALARY } }
-function loadPortfolio() { try { return JSON.parse(localStorage.getItem('portfolio'))      || DEFAULT_PORTFOLIO } catch { return DEFAULT_PORTFOLIO } }
+function loadPortfolio() { try { return JSON.parse(localStorage.getItem('portfolio_v2'))    || DEFAULT_PORTFOLIO } catch { return DEFAULT_PORTFOLIO } }
 function loadVacBal()    { try { const v = localStorage.getItem('vacationBal_v2');  return v !== null ? Number(v) : 0 } catch { return 0 } }
 function loadSpendBal()  { try { const v = localStorage.getItem('spendingBal_v1'); return v !== null ? Number(v) : 18400 } catch { return 18400 } }
 function loadIobBal()   { try { const v = localStorage.getItem('iobBal_v1');      return v !== null ? Number(v) : 50000 } catch { return 50000 } }
@@ -895,7 +895,7 @@ export default function Finance({ logs }) {
 
   function updatePortfolio(p) {
     setPortfolio(p)
-    localStorage.setItem('portfolio', JSON.stringify(p))
+    localStorage.setItem('portfolio_v2', JSON.stringify(p))
   }
 
   return (
